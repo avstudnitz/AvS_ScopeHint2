@@ -1,0 +1,20 @@
+{
+    "name": "avstudnitz/scopehint2",
+    "description": "N/A",
+    "require": {
+        "magento/framework": "~100.0"
+    },
+    "type": "magento2-module",
+    "version": "1.0.0",
+    "license": [
+        "OSL-3.0"
+    ],
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "AvS\\ScopeHint\\": ""
+        }
+    }
+}
