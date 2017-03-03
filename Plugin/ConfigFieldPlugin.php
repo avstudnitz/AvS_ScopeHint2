@@ -5,11 +5,14 @@ use Magento\Config\Model\Config\Structure\Element\Field as Subject;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\RequestInterface;
 use Magento\Store\Api\WebsiteRepositoryInterface;
+use Magento\Store\Api\StoreRepositoryInterface;
 use Magento\Store\Api\Data\WebsiteInterface;
+use Magento\Store\Api\Data\StoreInterface;
 
 class ConfigFieldPlugin
 {
     const SCOPE_TYPE_WEBSITES = 'websites';
+    const SCOPE_TYPE_STORES = 'stores';
     /**
      * @var ScopeConfigInterface
      */
@@ -19,6 +22,10 @@ class ConfigFieldPlugin
      */
     private $websiteRepository;
     /**
+     * @var StoreRepositoryInterface
+     */
+    private $storeRepository;
+    /**
      * @var RequestInterface
      */
     private $request;
@@ -26,11 +33,13 @@ class ConfigFieldPlugin
     public function __construct(
         ScopeConfigInterface $scopeConfig,
         WebsiteRepositoryInterface $websiteRepository,
+        StoreRepositoryInterface $storeRepository,
         RequestInterface $request
     )
     {
         $this->scopeConfig = $scopeConfig;
         $this->websiteRepository = $websiteRepository;
+        $this->storeRepository = $storeRepository;
         $this->request = $request;
     }
 
@@ -43,12 +52,17 @@ class ConfigFieldPlugin
     {
         $lines = [$result];
         foreach($this->websiteRepository->getList() as $website) {
-            if ($this->isWebsiteSelected($website)) {
-                continue;
+            if (!$this->isWebsiteSelected($website)) {
+                if ($scopeLine = $this->getScopeHint($this->getPath($subject), self::SCOPE_TYPE_WEBSITES, $website)) {
+                    $lines[] = $scopeLine;
+                }
             }
-
-            if ($scopeLine = $this->getScopeHint($this->getPath($subject), self::SCOPE_TYPE_WEBSITES, $website)) {
-                $lines[] = $scopeLine;
+        }
+        foreach($this->storeRepository->getList() as $store) {
+            if (!$this->isStoreSelected($store)) {
+                if ($scopeLine = $this->getScopeHint($this->getPath($subject), self::SCOPE_TYPE_STORES, $store)) {
+                    $lines[] = $scopeLine;
+                }
             }
         }
         return implode('<br />', array_filter($lines));
@@ -87,19 +101,32 @@ class ConfigFieldPlugin
     }
 
     /**
-     * @param $path
-     * @param $scopeType
-     * @param $website
-     * @return \Magento\Framework\Phrase|string
+     * @param StoreInterface $store
+     * @return bool
      */
-    private function getScopeHint($path, $scopeType, $website)
+    private function isStoreSelected($store)
+    {
+        return $store->getId() == $this->request->getParam('store');
+    }
+
+    /**
+     * @param string $path
+     * @param string $scopeType
+     * @param WebsiteInterface|StoreInterface $scope
+     * @return string
+     */
+    private function getScopeHint($path, $scopeType, $scope)
     {
         $scopeLine = '';
         $currentValue = $this->scopeConfig->getValue($path);
-        $scopeValue = $this->scopeConfig->getValue($path, $scopeType, $website->getId());
+        $scopeValue = $this->scopeConfig->getValue($path, $scopeType, $scope->getId());
         if ($scopeValue != $currentValue) {
-            $scopeLine = __('Website <code>%1</code>: "%2"', $website->getCode(), $scopeValue);
-            return $scopeLine;
+            switch($scopeType) {
+                case self::SCOPE_TYPE_STORES:
+                    return __('Store <code>%1</code>: "%2"', $scope->getCode(), $scopeValue);
+                case self::SCOPE_TYPE_WEBSITES:
+                    return __('Website <code>%1</code>: "%2"', $scope->getCode(), $scopeValue);
+            }
         }
         return $scopeLine;
     }
