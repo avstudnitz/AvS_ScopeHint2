@@ -1,50 +1,47 @@
-AvS_ScopeHint
+AvS_ScopeHint for Magento 2
 =====================
 Displays a hint when a configuration value is overwritten on a lower scope (website or store view).
-Works for product and category attributes too (as of v0.3.0)
 
 Facts
 -----
-- version: 0.5.0
-- extension key: AvS_ScopeHint
-- [extension on Magento Connect](http://www.magentocommerce.com/magento-connect/scope-hint.html)
-- Magento Connect 1.0 extension key: `magento-community/AvS_ScopeHint`
-- Magento Connect 2.0 extension key: `http://connect20.magentocommerce.com/community/AvS_ScopeHint`
-- [extension on GitHub](https://github.com/avstudnitz/AvS_ScopeHint)
-- [direct download link](https://github.com/avstudnitz/AvS_ScopeHint/archive/master.tar.gz)
-- Composer key: `avstudnitz/scopehint` (via FireGento repository)
+- version: 1.0.0-beta.1
+- [extension on GitHub](https://github.com/avstudnitz/AvS_ScopeHint2)
+- [direct download link](https://github.com/avstudnitz/AvS_ScopeHint2/archive/master.tar.gz)
+- Composer key: `avstudnitz/scopehint2` (registered at Packagist)
 
 Description
 -----------
 Whenever a configuration setting is overwritten by a lower level website or store view, an icon is displayed.
 On Mouseover, a list of all stores / websites which overwrite the setting is shown with the respective values.
-See the [screenshot](http://www.avs-webentwicklung.de/fileadmin/modules/AvS_ScopeHint.png) to get an overview about what the module does.
+See the screenshot to get an impression of what the module does:
 
-Works for category and product editing too.
+![Screenshot](scopehint2-screenshot.png?raw=true "ScopeHint for Magento 2")
 
-Now displays the configuration code (which is used for Mage::getStoreConfig) with the configuration fields.
+The module also displays the configuration code (which is used for `ScopeConfigInterface::getValue()`) with the configuration fields.
 
 Requirements
 ------------
-- PHP >= 5.2.0
-- Mage_Core
-- Mage_Adminhtml
+- PHP >= 5.6.0
 
 Compatibility
 -------------
-- Magento >= 1.4
+- Magento  >= 2.1.0 (not tested on 2.0.x)
 
 Installation Instructions
 -------------------------
-1. Install the extension via Magento Connect with the key shown above or copy all the files into your document root.
+1. Install the extension via Composer with the key shown above or copy all the files into the newly created directory 
+`app/code/AvS/ScopeHint/` in the Magento 2 root.
+2. Enable the extension by calling `bin/magento module:enable AvS_ScopeHint`.
+3. Run `bin/magento setup:upgrade`.
 
 Uninstallation
 --------------
-1. Remove all extension files from your Magento installation
+1. Uninstall the extension by calling `bin/magento module:uninstall AvS_AvS_ScopeHint`.
+2. Remove all extension files from `app/code/AvS/ScopeHint/` or use Composer to remove the extension if you have installed it with Composer
 
 Support
 -------
-If you have any issues with this extension, open an issue on [GitHub](https://github.com/avstudnitz/AvS_ScopeHint/issues).
+If you have any issues with this extension, open an issue on [GitHub](https://github.com/avstudnitz/AvS_ScopeHint2/issues).
 
 Contribution
 ------------
@@ -52,9 +49,9 @@ Any contribution is highly appreciated. The best way to contribute code is to op
 
 Developer
 ---------
-Andreas von Studnitz
+Andreas von Studnitz, integer_net
 
-[http://www.avs-webentwicklung.de](http://www.avs-webentwicklung.de)
+[http://www.integer-net.com](http://www.integer-net.com)
 
 [@avstudnitz](https://twitter.com/avstudnitz)
 
@@ -64,4 +61,4 @@ Licence
 
 Copyright
 ---------
-(c) 2012-2013 Andreas von Studnitz
+(c) 2017 Andreas von Studnitz / integer_net GmbH
