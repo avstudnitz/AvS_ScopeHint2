@@ -36,7 +36,7 @@ Installation Instructions
 
 Uninstallation
 --------------
-1. Uninstall the extension by calling `bin/magento module:uninstall AvS_AvS_ScopeHint`.
+1. Uninstall the extension by calling `bin/magento module:uninstall AvS_ScopeHint`.
 2. Remove all extension files from `app/code/AvS/ScopeHint/` or use Composer to remove the extension if you have installed it with Composer
 
 Support
