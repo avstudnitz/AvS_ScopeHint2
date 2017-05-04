@@ -29,8 +29,18 @@ Compatibility
 
 Installation Instructions
 -------------------------
-1. Install the extension via Composer with the key shown above or copy all the files into the newly created directory 
+
+### Via Composer:
+
+1. Call `composer require avstudnitz/scopehint2` in your Magento root dir from the command line
+
+### Via Download
+
+1. Copy all the files into the newly created directory 
 `app/code/AvS/ScopeHint/` in the Magento 2 root.
+
+### In both cases:
+
 2. Enable the extension by calling `bin/magento module:enable AvS_ScopeHint`.
 3. Run `bin/magento setup:upgrade`.
 
