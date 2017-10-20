@@ -2,10 +2,10 @@
     "name": "avstudnitz/scopehint2",
     "description": "N/A",
     "require": {
-        "magento/framework": "~100.0"
+        "magento/framework": "~100.0|~101.0"
     },
     "type": "magento2-module",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "license": [
         "OSL-3.0"
     ],
