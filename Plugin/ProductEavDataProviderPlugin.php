@@ -1,39 +1,50 @@
 <?php
+
 namespace AvS\ScopeHint\Plugin;
 
+use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\Eav;
+use Magento\Framework\Registry;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Catalog\Model\Attribute\ScopeOverriddenValue;
 
 class ProductEavDataProviderPlugin
 {
+    /** @var StoreManagerInterface */
+    private $storeManager;
+
+    /** @var Registry */
+    private $registry;
+
+    /** @var ProductRepositoryInterface */
+    private $productRepository;
+
+    /** @var array */
+    private $stores;
+
     /**
-     * @var StoreManagerInterface
+     * ProductEavDataProviderPlugin constructor.
+     *
+     * @param StoreManagerInterface $storeManager
+     * @param Registry $registry
+     * @param ProductRepositoryInterface $productRepository
      */
-    protected $storeManager;
-    /**
-     * @var ScopeOverriddenValue
-     */
-    protected $scopeOverriddenValue;
-
-    protected $registry;
-
-    protected $productRepository;
-
-    protected $stores;
-
     public function __construct(
         StoreManagerInterface $storeManager,
-        ScopeOverriddenValue $scopeOverriddenValue,
-        \Magento\Framework\Registry $registry,
-        \Magento\Catalog\Api\ProductRepositoryInterface $productRepository
+        Registry $registry,
+        ProductRepositoryInterface $productRepository
     ) {
         $this->storeManager = $storeManager;
-        $this->scopeOverriddenValue = $scopeOverriddenValue;
         $this->registry = $registry;
         $this->productRepository = $productRepository;
     }
 
-    public function afterSetupAttributeMeta(\Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\Eav $subject, $result)
+    /**
+     * @param Eav $subject
+     * @param $result
+     * @return mixed
+     */
+    public function afterSetupAttributeMeta(Eav $subject, $result)
     {
         if (!isset($result['arguments']['data']['config']['code'])
             || $result['arguments']['data']['config']['globalScope']
@@ -69,11 +80,19 @@ class ProductEavDataProviderPlugin
         return $result;
     }
 
+    /**
+     * @param int $productId
+     * @param int $storeViewId
+     * @return mixed
+     */
     private function getProductInStoreView($productId, $storeViewId)
     {
         return $this->productRepository->getById($productId, false, $storeViewId);
     }
 
+    /**
+     * @return array
+     */
     private function getStores()
     {
         if (!$this->stores) {
