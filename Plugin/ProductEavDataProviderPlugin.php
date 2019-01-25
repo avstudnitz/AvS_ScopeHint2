@@ -2,11 +2,13 @@
 
 namespace AvS\ScopeHint\Plugin;
 
+use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\Eav;
+use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Registry;
+use Magento\Store\Api\Data\StoreInterface;
 use Magento\Store\Model\StoreManagerInterface;
-use Magento\Catalog\Model\Attribute\ScopeOverriddenValue;
 
 class ProductEavDataProviderPlugin
 {
@@ -43,6 +45,7 @@ class ProductEavDataProviderPlugin
      * @param Eav $subject
      * @param $result
      * @return mixed
+     * @throws NoSuchEntityException
      */
     public function afterSetupAttributeMeta(Eav $subject, $result)
     {
@@ -56,38 +59,55 @@ class ProductEavDataProviderPlugin
         $scopeHints = [];
         $attributeCode = $result['arguments']['data']['config']['code'];
         $storeViews = $this->getStores();
-        $product = $this->registry->registry('current_product');
+        $productId = $this->registry->registry('current_product')->getId();
+        $product = $this->getProductInStoreView($productId, 0);
 
         if ($product->getId() === null) {
             return $result;
         }
 
         foreach ($storeViews as $storeView) {
-            $productByStoreCode = $this->getProductInStoreView($product->getId(), $storeView->getId());
-            $currentScopeValueForCode = $value = $productByStoreCode->getData($attributeCode);
+            $productByStoreCode = $this->getProductInStoreView($productId, $storeView->getId());
 
-            if ($result['arguments']['data']['config']['dataType'] == 'select'
-                && !is_array($currentScopeValueForCode)
-            ) {
-                $value = $productByStoreCode->getResource()->getAttribute($attributeCode)->getSource()->getOptionText($currentScopeValueForCode);
+            if ($product->getData($attributeCode) !== $productByStoreCode->getData($attributeCode)) {
+                $scopeHints[] = sprintf(
+                    '%s: %s: %s',
+                    $storeView->getWebsite()->getName(),
+                    $storeView->getName(),
+                    $this->getAttributeValue($product, $attributeCode)
+                );
             }
+        }
 
-            if ($product->getData($attributeCode) !== $currentScopeValueForCode) {
-                $scopeHints[] = $storeView->getName() . ': ' . $value;
-            }
-
-            if (!empty($scopeHints)) {
-                $result['arguments']['data']['config']['tooltip']['description'] = implode('<br>', $scopeHints);
-            }
+        if (!empty($scopeHints)) {
+            array_unshift($scopeHints, sprintf('%s: %s', __('Default'), $this->getAttributeValue($product, $attributeCode)));
+            $result['arguments']['data']['config']['tooltip']['description'] = implode("\n ", $scopeHints);
         }
 
         return $result;
     }
 
     /**
+     * @param ProductInterface $product
+     * @param string $attributeCode
+     * @return mixed
+     */
+    private function getAttributeValue(ProductInterface $product, $attributeCode)
+    {
+        return $product
+            ->getResource()
+            ->getAttribute($attributeCode)
+            ->getFrontend()
+            ->getValue($product)
+        ;
+    }
+
+
+    /**
      * @param int $productId
      * @param int $storeViewId
      * @return mixed
+     * @throws NoSuchEntityException
      */
     private function getProductInStoreView($productId, $storeViewId)
     {
@@ -95,7 +115,7 @@ class ProductEavDataProviderPlugin
     }
 
     /**
-     * @return array
+     * @return StoreInterface[]
      */
     private function getStores()
     {
