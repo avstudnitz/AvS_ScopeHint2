@@ -58,6 +58,10 @@ class ProductEavDataProviderPlugin
         $storeViews = $this->getStores();
         $product = $this->registry->registry('current_product');
 
+        if ($product->getId() === null) {
+            return $result;
+        }
+
         foreach ($storeViews as $storeView) {
             $productByStoreCode = $this->getProductInStoreView($product->getId(), $storeView->getId());
             $currentScopeValueForCode = $value = $productByStoreCode->getData($attributeCode);
