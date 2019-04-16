@@ -73,6 +73,9 @@ class ProductEavDataProviderPlugin
             }
 
             if ($product->getData($attributeCode) !== $currentScopeValueForCode) {
+                if (is_array($value)) {
+                    $value = implode(", ", $value);
+                }
                 $scopeHints[] = $storeView->getName() . ': ' . $value;
             }
 
