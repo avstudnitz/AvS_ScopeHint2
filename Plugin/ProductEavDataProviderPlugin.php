@@ -72,8 +72,27 @@ class ProductEavDataProviderPlugin
                 $value = $productByStoreCode->getResource()->getAttribute($attributeCode)->getSource()->getOptionText($currentScopeValueForCode);
             }
 
-            if ($product->getData($attributeCode) !== $currentScopeValueForCode) {
-                $scopeHints[] = $storeView->getName() . ': ' . $value;
+            // This checks if we can cast $value to a string
+            // If this fails, we json_encode the value, so we eventually do get a string representation
+            // If the json_encode fails for some reason, we just ignore it and won't output anything
+            //
+            // This problem can be seen in practice when:
+            // - having at least 2 websites
+            // - having the catalog price scope set to Website
+            // - using different tier prices for a single product over multiple websites
+            // (Another bug in that particular case, is that the tooltip doesn't seem to show up, so that's another thing which will need to get fixed someday)
+            $valueAsString = null;
+            try {
+                $valueAsString = (string) $value;
+            } catch (\Throwable $ex) {
+                $valueAsString = json_encode($value);
+                if ($valueAsString === false) {
+                    $valueAsString = null;
+                }
+            }
+
+            if ($valueAsString !== null && $product->getData($attributeCode) !== $currentScopeValueForCode) {
+                $scopeHints[] = $storeView->getName() . ': ' . $valueAsString;
             }
 
             if (!empty($scopeHints)) {
