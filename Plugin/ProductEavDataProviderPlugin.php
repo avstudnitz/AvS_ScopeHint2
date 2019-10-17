@@ -58,7 +58,7 @@ class ProductEavDataProviderPlugin
         $storeViews = $this->getStores();
         $product = $this->registry->registry('current_product');
 
-        if ($product->getId() === null) {
+        if ($product === null || $product->getId() === null) {
             return $result;
         }
 
