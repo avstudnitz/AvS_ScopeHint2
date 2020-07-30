@@ -2,7 +2,7 @@
     "name": "avstudnitz/scopehint2",
     "description": "N/A",
     "require": {
-        "magento/framework": "~100.0|~101.0|~102.0"
+        "magento/framework": "~100.0|~101.0|~102.0|~103.0"
     },
     "type": "magento2-module",
     "license": [
