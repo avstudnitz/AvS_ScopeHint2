@@ -4,6 +4,7 @@ namespace AvS\ScopeHint\Plugin;
 use Magento\Config\Model\Config\Structure\Element\Field as Subject;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\RequestInterface;
+use Magento\Framework\Phrase;
 use Magento\Store\Api\WebsiteRepositoryInterface;
 use Magento\Store\Api\StoreRepositoryInterface;
 use Magento\Store\Api\Data\WebsiteInterface;
@@ -75,10 +76,22 @@ class ConfigFieldPlugin
      */
     public function afterGetComment(Subject $subject, $result)
     {
+        $resultIsPhrase = $result instanceof Phrase;
+        if ($resultIsPhrase) {
+            $phrase = $result;
+            $result = $phrase->getText();
+            $arguments = $phrase->getArguments();
+        }
+
         if (strlen(trim($result))) {
             $result .= '<br />';
         }
         $result .= __('Path: <code>%1</code>', $this->getPath($subject));
+
+        if ($resultIsPhrase) {
+            $result = new Phrase($result, $arguments);
+        }
+
         return $result;
     }
 
