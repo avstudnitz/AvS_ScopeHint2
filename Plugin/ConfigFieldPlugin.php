@@ -83,14 +83,14 @@ class ConfigFieldPlugin
             $arguments = $phrase->getArguments();
         }
 
+        if ($resultIsPhrase) {
+            $result = new Phrase($result, $arguments);
+        }
+        
         if (strlen(trim($result))) {
             $result .= '<br />';
         }
         $result .= __('Path: <code>%1</code>', $this->getPath($subject));
-
-        if ($resultIsPhrase) {
-            $result = new Phrase($result, $arguments);
-        }
 
         return $result;
     }
