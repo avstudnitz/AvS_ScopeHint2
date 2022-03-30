@@ -4,6 +4,7 @@ namespace AvS\ScopeHint\Plugin;
 use Magento\Config\Model\Config\Structure\Element\Field as Subject;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\RequestInterface;
+use Magento\Framework\Escaper;
 use Magento\Framework\Phrase;
 use Magento\Store\Api\WebsiteRepositoryInterface;
 use Magento\Store\Api\StoreRepositoryInterface;
@@ -14,6 +15,10 @@ class ConfigFieldPlugin
 {
     const SCOPE_TYPE_WEBSITES = 'websites';
     const SCOPE_TYPE_STORES = 'stores';
+
+    /** @var Escaper */
+    private $escaper;
+
     /**
      * @var ScopeConfigInterface
      */
@@ -32,12 +37,13 @@ class ConfigFieldPlugin
     private $request;
 
     public function __construct(
+        Escaper $escaper,
         ScopeConfigInterface $scopeConfig,
         WebsiteRepositoryInterface $websiteRepository,
         StoreRepositoryInterface $storeRepository,
         RequestInterface $request
-    )
-    {
+    ) {
+        $this->escaper = $escaper;
         $this->scopeConfig = $scopeConfig;
         $this->websiteRepository = $websiteRepository;
         $this->storeRepository = $storeRepository;
@@ -134,6 +140,8 @@ class ConfigFieldPlugin
         $currentValue = $this->scopeConfig->getValue($path);
         $scopeValue = $this->scopeConfig->getValue($path, $scopeType, $scope->getId());
         if ($scopeValue != $currentValue) {
+            $scopeValue = $this->escaper->escapeHtml($scopeValue);
+
             switch($scopeType) {
                 case self::SCOPE_TYPE_STORES:
                     return __('Store <code>%1</code>: "%2"', $scope->getCode(), $scopeValue);
