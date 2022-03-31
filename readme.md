@@ -18,7 +18,7 @@ See the screenshot to get an impression of what the module does:
 ![Screenshot](scopehint2-screenshot.png?raw=true "ScopeHint for Magento 2")
 
 The module also optionally displays the configuration code (which is used for `ScopeConfigInterface::getValue()`) with the configuration fields.
-This is off by default, and can be enabled in
+This is on by default, and can be enabled/disabled in
 Stores -> Settings -> Configuration -> Advanced -> Developer -> Debug -> `Display path for each option in system configuration`
 
 Requirements
