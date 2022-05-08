@@ -4,6 +4,10 @@
         <plugin name="avs_scopehint_plugin_add_tooltip_to_product_field" type="AvS\ScopeHint\Plugin\ConfigFieldPlugin" sortOrder="1" disabled="false" />
     </type>
 
+    <type name="Magento\Ui\Component\Form\Field">
+        <plugin name="avs_scopehint_plugin_add_tooltip_to_category_field" type="AvS\ScopeHint\Plugin\CategoryFieldPlugin" sortOrder="1" disabled="false" />
+    </type>
+
     <type name="Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\Eav">
         <plugin name="avs_scopehint_plugin_field" type="AvS\ScopeHint\Plugin\ProductEavDataProviderPlugin" sortOrder="1" disabled="false" />
     </type>
