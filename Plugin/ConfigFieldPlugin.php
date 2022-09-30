@@ -10,6 +10,7 @@ use Magento\Store\Api\WebsiteRepositoryInterface;
 use Magento\Store\Api\StoreRepositoryInterface;
 use Magento\Store\Api\Data\WebsiteInterface;
 use Magento\Store\Api\Data\StoreInterface;
+use Magento\Store\Model\ScopeInterface;
 
 class ConfigFieldPlugin
 {
@@ -59,17 +60,25 @@ class ConfigFieldPlugin
     {
         $lines = [$result];
         foreach($this->websiteRepository->getList() as $website) {
-            if (!$this->isWebsiteSelected($website)) {
-                if ($scopeLine = $this->getScopeHint($this->getPath($subject), self::SCOPE_TYPE_WEBSITES, $website)) {
-                    $lines[] = $scopeLine;
-                }
+            if ($this->getWebsiteParam() || $this->getStoreParam()) {
+                continue;
+            }
+            // Only show website specific values in default scope
+            if ($scopeLine = $this->getScopeHint($subject, self::SCOPE_TYPE_WEBSITES, $website)) {
+                $lines[] = $scopeLine;
             }
         }
         foreach($this->storeRepository->getList() as $store) {
-            if (!$this->isStoreSelected($store)) {
-                if ($scopeLine = $this->getScopeHint($this->getPath($subject), self::SCOPE_TYPE_STORES, $store)) {
-                    $lines[] = $scopeLine;
-                }
+            if ($this->getStoreParam($store)) {
+
+                continue;
+            }
+            if (($websiteId = $this->getWebsiteParam()) && ($store->getWebsiteId() != $websiteId)) {
+                continue;
+            }
+            // Only show store specific values in default scope and in parent website scope
+            if ($scopeLine = $this->getScopeHint($subject, self::SCOPE_TYPE_STORES, $store)) {
+                $lines[] = $scopeLine;
             }
         }
         return implode('<br />', array_filter($lines));
@@ -111,44 +120,78 @@ class ConfigFieldPlugin
     }
 
     /**
-     * @param WebsiteInterface $website
-     * @return bool
-     */
-    private function isWebsiteSelected($website)
-    {
-        return $website->getId() == $this->request->getParam('website');
-    }
-
-    /**
-     * @param StoreInterface $store
-     * @return bool
-     */
-    private function isStoreSelected($store)
-    {
-        return $store->getId() == $this->request->getParam('store');
-    }
-
-    /**
-     * @param string $path
+     * @param Subject $field
      * @param string $scopeType
      * @param WebsiteInterface|StoreInterface $scope
      * @return string
      */
-    private function getScopeHint($path, $scopeType, $scope)
+    private function getScopeHint(Subject $field, $scopeType, $scope)
     {
+        $path = $this->getPath($field);
         $scopeLine = '';
-        $currentValue = $this->scopeConfig->getValue($path);
-        $scopeValue = $this->scopeConfig->getValue($path, $scopeType, $scope->getId());
+        if ($websiteId = $this->getWebsiteParam()) {
+            $currentValue = (string) $this->scopeConfig->getValue(
+                $path,
+                ScopeInterface::SCOPE_WEBSITE,
+                $websiteId
+            );
+        } else {
+            $currentValue = (string) $this->scopeConfig->getValue($path);
+        }
+        $scopeValue = (string) $this->scopeConfig->getValue($path, $scopeType, $scope->getId());
+        
         if ($scopeValue != $currentValue) {
             $scopeValue = $this->escaper->escapeHtml($scopeValue);
 
             switch($scopeType) {
                 case self::SCOPE_TYPE_STORES:
-                    return __('Store <code>%1</code>: "%2"', $scope->getCode(), $scopeValue);
+                    return __(
+                        'Store <code>%1</code>: "%2"',
+                        $scope->getCode(),
+                        $this->getValueLabel($field, $scopeValue)
+                    );
                 case self::SCOPE_TYPE_WEBSITES:
-                    return __('Website <code>%1</code>: "%2"', $scope->getCode(), $scopeValue);
+                    return __(
+                        'Website <code>%1</code>: "%2"',
+                        $scope->getCode(),
+                        $this->getValueLabel($field, $scopeValue)
+                    );
             }
         }
         return $scopeLine;
+    }
+
+    private function getValueLabel(Subject $field, string $scopeValue): string
+    {
+        $scopeValue = trim($scopeValue);
+        if ($field->hasOptions()) {
+            if ($field->getType() == 'multiselect' && strpos($scopeValue, ',') !== false) {
+                return implode(
+                    ', ',
+                    array_map(
+                        function ($key) use ($field) {
+                            return $this->getValueLabel($field, $key);
+                        },
+                        explode(',', $scopeValue)
+                    )
+                );
+            }
+            foreach ($field->getOptions() as $option) {
+                if ($option['value'] == $scopeValue) {
+                    return $option['label'];
+                }
+            }
+        }
+        return $scopeValue;
+    }
+
+    private function getWebsiteParam(): ?string
+    {
+        return $this->request->getParam('website');
+    }
+
+    private function getStoreParam(): ?string
+    {
+        return $this->request->getParam('store');
     }
 }
