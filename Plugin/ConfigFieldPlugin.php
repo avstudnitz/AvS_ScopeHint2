@@ -70,7 +70,6 @@ class ConfigFieldPlugin
         }
         foreach($this->storeRepository->getList() as $store) {
             if ($this->getStoreParam($store)) {
-
                 continue;
             }
             if (($websiteId = $this->getWebsiteParam()) && ($store->getWebsiteId() != $websiteId)) {
@@ -165,7 +164,7 @@ class ConfigFieldPlugin
     {
         $scopeValue = trim($scopeValue);
         if ($field->hasOptions()) {
-            if ($field->getType() == 'multiselect' && strpos($scopeValue, ',') !== false) {
+            if ($field->getType() === 'multiselect' && strpos($scopeValue, ',') !== false) {
                 return implode(
                     ', ',
                     array_map(
