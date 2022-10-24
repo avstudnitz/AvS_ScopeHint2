@@ -176,7 +176,7 @@ class ConfigFieldPlugin
                 );
             }
             foreach ($field->getOptions() as $option) {
-                if ($option['value'] == $scopeValue) {
+                if (is_array($option) && $option['value'] == $scopeValue) {
                     return $option['label'];
                 }
             }
