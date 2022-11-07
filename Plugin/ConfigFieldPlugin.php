@@ -137,7 +137,14 @@ class ConfigFieldPlugin
         } else {
             $currentValue = (string) $this->scopeConfig->getValue($path);
         }
-        $scopeValue = (string) $this->scopeConfig->getValue($path, $scopeType, $scope->getId());
+
+        $scopeValue = $this->scopeConfig->getValue($path, $scopeType, $scope->getId());
+
+        if (is_array($scopeValue)) {
+            return '';
+        }
+
+        $scopeValue = (string) $scopeValue;        
         
         if ($scopeValue != $currentValue) {
             $scopeValue = $this->escaper->escapeHtml($scopeValue);
