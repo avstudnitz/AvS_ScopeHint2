@@ -129,16 +129,23 @@ class ConfigFieldPlugin
         $path = $this->getPath($field);
         $scopeLine = '';
         if ($websiteId = $this->getWebsiteParam()) {
-            $currentValue = (string) $this->scopeConfig->getValue(
+            $currentValue = $this->scopeConfig->getValue(
                 $path,
                 ScopeInterface::SCOPE_WEBSITE,
                 $websiteId
             );
         } else {
-            $currentValue = (string) $this->scopeConfig->getValue($path);
+            $currentValue = $this->scopeConfig->getValue($path);
         }
-        $scopeValue = (string) $this->scopeConfig->getValue($path, $scopeType, $scope->getId());
-        
+        $scopeValue = $this->scopeConfig->getValue($path, $scopeType, $scope->getId());
+
+        if (is_array($currentValue) || is_array($scopeValue)) {
+            return $scopeLine;
+        }
+
+        $currentValue = (string) $currentValue;
+        $scopeValue = (string) $scopeValue;
+
         if ($scopeValue != $currentValue) {
             $scopeValue = $this->escaper->escapeHtml($scopeValue);
 
