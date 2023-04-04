@@ -88,7 +88,8 @@ class ConfigFieldPlugin
      * @param string $result
      * @return string
      */
-    public function afterGetComment(Subject $subject, $result) {
+    public function afterGetComment(Subject $subject, $result)
+    {
 
         if ($result instanceof Phrase) {
             $result = (string) $result;
