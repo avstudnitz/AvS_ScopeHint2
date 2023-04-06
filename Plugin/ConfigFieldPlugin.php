@@ -90,21 +90,16 @@ class ConfigFieldPlugin
      */
     public function afterGetComment(Subject $subject, $result)
     {
-        $resultIsPhrase = $result instanceof Phrase;
-        if ($resultIsPhrase) {
-            $phrase = $result;
-            $result = $phrase->getText();
-            $arguments = $phrase->getArguments();
+
+        if ($result instanceof Phrase) {
+            $result = (string) $result;
         }
 
         if (strlen(trim($result))) {
             $result .= '<br />';
         }
-        $result .= __('Path: <code>%1</code>', $this->getPath($subject));
 
-        if ($resultIsPhrase) {
-            $result = new Phrase($result, $arguments);
-        }
+        $result .= __('Path: <code>%1</code>', $this->getPath($subject));
 
         return $result;
     }
