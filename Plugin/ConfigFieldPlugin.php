@@ -17,6 +17,8 @@ class ConfigFieldPlugin
     const SCOPE_TYPE_WEBSITES = 'websites';
     const SCOPE_TYPE_STORES = 'stores';
 
+    private const CONFIG_SHOW_PATH = 'dev/debug/show_path_in_adminhtml';
+
     /** @var Escaper */
     private $escaper;
 
@@ -90,6 +92,9 @@ class ConfigFieldPlugin
      */
     public function afterGetComment(Subject $subject, $result)
     {
+        if (!$this->scopeConfig->isSetFlag(self::CONFIG_SHOW_PATH)) {
+            return $result;
+        }
 
         if ($result instanceof Phrase) {
             $result = (string) $result;
