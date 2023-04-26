@@ -85,11 +85,12 @@ class ConfigFieldPlugin
 
     /**
      * @param Subject $subject
-     * @param string $result
-     * @return string
+     * @param string|Phrase $result
+     * @return string|Phrase
      */
     public function afterGetComment(Subject $subject, $result)
     {
+        $phrase = false;
 
         if ($result instanceof Phrase) {
             $result = (string) $result;
@@ -101,7 +102,7 @@ class ConfigFieldPlugin
 
         $result .= __('Path: <code>%1</code>', $this->getPath($subject));
 
-        return $result;
+        return $phrase? __($result) : $result;
     }
 
     /**
