@@ -85,24 +85,16 @@ class ConfigFieldPlugin
 
     /**
      * @param Subject $subject
-     * @param string|Phrase $result
-     * @return string|Phrase
+     * @param array $result
+     * @return array
      */
-    public function afterGetComment(Subject $subject, $result)
-    {
-        $phrase = false;
+    public function afterGetData(
+        Subject $subject,
+        array $result
+    ) {
+        $result['path_hint'] = '<small>' . __('Path: <code>%1</code>', $this->getPath($subject) . '</small>');
 
-        if ($result instanceof Phrase) {
-            $result = (string) $result;
-        }
-
-        if (strlen(trim($result))) {
-            $result .= '<br />';
-        }
-
-        $result .= __('Path: <code>%1</code>', $this->getPath($subject));
-
-        return $phrase? __($result) : $result;
+        return $result;
     }
 
     /**
