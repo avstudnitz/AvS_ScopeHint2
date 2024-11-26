@@ -7,4 +7,11 @@
     <type name="Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\Eav">
         <plugin name="avs_scopehint_plugin_field" type="AvS\ScopeHint\Plugin\ProductEavDataProviderPlugin" sortOrder="1" disabled="false" />
     </type>
+
+    <type name="Magento\Config\Block\System\Config\Form\Field">
+        <plugin name="avs_scopehint_plugin_add_config_path"
+                type="AvS\ScopeHint\Plugin\ConfigFormFieldPlugin"
+                sortOrder="1"
+                disabled="false"/>
+    </type>
 </config>
