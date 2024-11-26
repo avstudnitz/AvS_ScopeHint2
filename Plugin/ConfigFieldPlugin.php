@@ -87,24 +87,18 @@ class ConfigFieldPlugin
 
     /**
      * @param Subject $subject
-     * @param string $result
-     * @return string
+     * @param array $result
+     * @return array
      */
-    public function afterGetComment(Subject $subject, $result)
-    {
+    public function afterGetData(
+        Subject $subject,
+        array $result
+    ) {
         if (!$this->scopeConfig->isSetFlag(self::CONFIG_SHOW_PATH)) {
             return $result;
         }
 
-        if ($result instanceof Phrase) {
-            $result = (string) $result;
-        }
-
-        if (strlen(trim($result))) {
-            $result .= '<br />';
-        }
-
-        $result .= __('Path: <code>%1</code>', $this->getPath($subject));
+        $result['path_hint'] = '<small>' . __('Path: <code>%1</code>', $this->getPath($subject) . '</small>');
 
         return $result;
     }
