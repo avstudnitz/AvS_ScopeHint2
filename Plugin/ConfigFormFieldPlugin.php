@@ -21,7 +21,7 @@ class ConfigFormFieldPlugin
     ): array {
         $element->setData(
             'after_element_html',
-            $element->getData('after_element_html') . $element->getData('field_config')['path_hint']
+            $element->getData('after_element_html') . ($element->getData('field_config')['path_hint'] ?? '')
         );
 
         return [$element];
