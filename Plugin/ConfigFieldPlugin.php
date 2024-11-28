@@ -17,6 +17,8 @@ class ConfigFieldPlugin
     const SCOPE_TYPE_WEBSITES = 'websites';
     const SCOPE_TYPE_STORES = 'stores';
 
+    private const CONFIG_SHOW_PATH = 'dev/debug/show_path_in_adminhtml';
+
     /** @var Escaper */
     private $escaper;
 
@@ -92,6 +94,10 @@ class ConfigFieldPlugin
         Subject $subject,
         array $result
     ) {
+        if (!$this->scopeConfig->isSetFlag(self::CONFIG_SHOW_PATH)) {
+            return $result;
+        }
+
         $result['path_hint'] = '<small>' . __('Path: <code>%1</code>', $this->getPath($subject) . '</small>');
 
         return $result;
