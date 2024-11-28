@@ -4,7 +4,6 @@ Displays a hint when a configuration value is overwritten on a lower scope (webs
 
 Facts
 -----
-- version: 1.0.0-beta.1
 - [extension on GitHub](https://github.com/avstudnitz/AvS_ScopeHint2)
 - [direct download link](https://github.com/avstudnitz/AvS_ScopeHint2/archive/master.tar.gz)
 - Composer key: `avstudnitz/scopehint2` (registered at Packagist)
@@ -61,11 +60,9 @@ Any contribution is highly appreciated. The best way to contribute code is to op
 
 Developer
 ---------
-Andreas von Studnitz, integer_net
+Andreas von Studnitz
 
-[http://www.integer-net.com](http://www.integer-net.com)
-
-[@avstudnitz](https://twitter.com/avstudnitz)
+[@avstudnitz](https://www.linkedin.com/in/andreasv1/)
 
 Licence
 -------
@@ -73,4 +70,4 @@ Licence
 
 Copyright
 ---------
-(c) 2017 Andreas von Studnitz / integer_net GmbH
+(c) 2017-2024 Andreas von Studnitz
