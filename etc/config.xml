@@ -5,6 +5,7 @@
         <dev>
             <debug>
                 <show_path_in_adminhtml>1</show_path_in_adminhtml>
+                <show_attribute_code_in_adminhtml>1</show_attribute_code_in_adminhtml>
             </debug>
         </dev>
     </default>
