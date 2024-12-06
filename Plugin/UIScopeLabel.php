@@ -10,10 +10,22 @@ class UIScopeLabel
 {
     private const CONFIG_SHOW_ATTRIBUTE_CODE = 'dev/debug/show_attribute_code_in_adminhtml';
 
+    /**
+     * @var ArrayManager
+     */
+    private $arrayManager;
+
+    /**
+     * @var ScopeConfigInterface
+     */
+    private $scopeConfig;
+
     public function __construct(
-        protected ArrayManager $arrayManager,
-        protected ScopeConfigInterface $scopeConfig,
+        ArrayManager $arrayManager,
+        ScopeConfigInterface $scopeConfig,
     ) {
+        $this->arrayManager = $arrayManager;
+        $this->scopeConfig = $scopeConfig;
     }
 
     public function afterSetupAttributeMeta(EavModifier $subject, $result, $attribute)
