@@ -14,4 +14,11 @@
                 sortOrder="1"
                 disabled="false"/>
     </type>
+
+    <type name="Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\Eav">
+        <plugin name="avs_scopehint_plugin_add_attribute_code"
+                type="AvS\ScopeHint\Plugin\UIScopeLabel"
+                sortOrder="1"
+                disabled="false"/>
+    </type>
 </config>
