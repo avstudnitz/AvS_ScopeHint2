@@ -39,6 +39,11 @@ class ConfigFieldPlugin
      */
     private $request;
 
+    /**
+     * @var array<string>
+     */
+    private $handledFields = [];
+
     public function __construct(
         Escaper $escaper,
         ScopeConfigInterface $scopeConfig,
@@ -98,7 +103,15 @@ class ConfigFieldPlugin
             return $result;
         }
 
-        $result['path_hint'] = '<small>' . __('Path: <code>%1</code>', $this->getPath($subject) . '</small>');
+        // make sure we only calculate the path hint once
+        // there is a known issue with a plugin from the MultiSafepay module (FieldPlugin) that can cause an infinite loop
+        // this solves it by calculating the field's object hash and making sure we only call getPath once per Field
+        $fieldObjectHash = spl_object_hash($subject);
+        if (!in_array($fieldObjectHash, $this->handledFields, true)) {
+            $this->handledFields[] = $fieldObjectHash;
+
+            $result['path_hint'] = '<small>' . __('Path: <code>%1</code>', $this->getPath($subject) . '</small>');
+        }
 
         return $result;
     }
