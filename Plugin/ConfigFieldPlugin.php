@@ -106,8 +106,9 @@ class ConfigFieldPlugin
         // make sure we only calculate the path hint once
         // there is a known issue with a plugin from the MultiSafepay module (FieldPlugin) that can cause an infinite loop
         // this solves it by calculating the field's object hash and making sure we only call getPath once per Field
+        // NB For the configuration, this fails as the subject is always "Magento\Config\Model\Config\Structure\Element\Field\Interceptor"
         $fieldObjectHash = spl_object_hash($subject);
-        if (!in_array($fieldObjectHash, $this->handledFields, true)) {
+        if (!in_array($fieldObjectHash, $this->handledFields, true) || empty($result['path_hint'])) {
             $this->handledFields[] = $fieldObjectHash;
 
             $result['path_hint'] = '<small>' . __('Path: <code>%1</code>', $this->getPath($subject) . '</small>');
