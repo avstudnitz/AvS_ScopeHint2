@@ -39,10 +39,10 @@ class ConfigFieldPlugin
      */
     private $request;
 
-    /**
-     * @var array<string>
-     */
-    private $handledFields = [];
+     /**
+     * @var bool
+      */
+    private $isProcessing = false;
 
     public function __construct(
         Escaper $escaper,
@@ -103,15 +103,14 @@ class ConfigFieldPlugin
             return $result;
         }
 
-        // make sure we only calculate the path hint once
-        // there is a known issue with a plugin from the MultiSafepay module (FieldPlugin) that can cause an infinite loop
-        // this solves it by calculating the field's object hash and making sure we only call getPath once per Field
-        $fieldObjectHash = spl_object_hash($subject);
-        if (!in_array($fieldObjectHash, $this->handledFields, true)) {
-            $this->handledFields[] = $fieldObjectHash;
+        // to avoid a potential infinite loop, we keep a flag to see if we are already handling this particular field
+        if (!$this->isProcessing) {
+            $this->isProcessing = true;
 
-            $result['path_hint'] = '<small>' . __('Path: <code>%1</code>', $this->getPath($subject) . '</small>');
-        }
+             $result['path_hint'] = '<small>' . __('Path: <code>%1</code>', $this->getPath($subject) . '</small>');
+
+            $this->isProcessing = false;
+         }
 
         return $result;
     }
