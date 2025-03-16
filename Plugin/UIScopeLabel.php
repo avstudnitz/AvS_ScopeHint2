@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace AvS\ScopeHint\Plugin;
 
 use Magento\Catalog\Api\Data\ProductAttributeInterface;
@@ -14,16 +17,16 @@ class UIScopeLabel
     /**
      * @var ArrayManager
      */
-    private $arrayManager;
+    private ArrayManager $arrayManager;
 
     /**
      * @var ScopeConfigInterface
      */
-    private $scopeConfig;
+    private ScopeConfigInterface $scopeConfig;
 
     public function __construct(
         ArrayManager $arrayManager,
-        ScopeConfigInterface $scopeConfig,
+        ScopeConfigInterface $scopeConfig
     ) {
         $this->arrayManager = $arrayManager;
         $this->scopeConfig = $scopeConfig;
@@ -41,20 +44,22 @@ class UIScopeLabel
             return $result;
         }
 
+        if ($attribute->getFrontendInput() === AttributeInterface::FRONTEND_INPUT) {
+            return $result;
+        }
+
         $configPath = ltrim(EavModifier::META_CONFIG_PATH, ArrayManager::DEFAULT_PATH_DELIMITER);
         $scopeLabel = $this->arrayManager->get(
             $configPath . ArrayManager::DEFAULT_PATH_DELIMITER . 'scopeLabel',
             $result
         );
 
-        if ($attribute->getFrontendInput() !== AttributeInterface::FRONTEND_INPUT) {
-            $scopeLabel = $attribute->getAttributeCode() . ' ' . (string)$scopeLabel;
-            $result = $this->arrayManager->merge(
-                $configPath,
-                $result,
-                ['scopeLabel' => trim($scopeLabel)]
-            );
-        }
+        $scopeLabel = $attribute->getAttributeCode() . ' ' . (string)$scopeLabel;
+        $result = $this->arrayManager->merge(
+            $configPath,
+            $result,
+            ['scopeLabel' => trim($scopeLabel)]
+        );
 
         return $result;
     }

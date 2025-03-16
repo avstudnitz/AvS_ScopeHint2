@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace AvS\ScopeHint\Plugin;
 
 use Magento\Config\Model\Config\Structure\Element\Field as Subject;
@@ -25,24 +28,24 @@ class ConfigFieldPlugin
     /**
      * @var ScopeConfigInterface
      */
-    private $scopeConfig;
+    private ScopeConfigInterface $scopeConfig;
     /**
      * @var WebsiteRepositoryInterface
      */
-    private $websiteRepository;
+    private WebsiteRepositoryInterface $websiteRepository;
     /**
      * @var StoreRepositoryInterface
      */
-    private $storeRepository;
+    private StoreRepositoryInterface $storeRepository;
     /**
      * @var RequestInterface
      */
-    private $request;
+    private RequestInterface $request;
 
      /**
      * @var bool
       */
-    private $isProcessing = false;
+    private bool $isProcessing = false;
 
     public function __construct(
         Escaper $escaper,
@@ -173,7 +176,7 @@ class ConfigFieldPlugin
         return $scopeLine;
     }
 
-    private function getValueLabel(Subject $field, string $scopeValue): string
+    private function getValueLabel(Subject $field, string $scopeValue)
     {
         $scopeValue = trim($scopeValue);
         if ($field->hasOptions()) {
