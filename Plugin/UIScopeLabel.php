@@ -23,7 +23,7 @@ class UIScopeLabel
 
     public function __construct(
         ArrayManager $arrayManager,
-        ScopeConfigInterface $scopeConfig,
+        ScopeConfigInterface $scopeConfig
     ) {
         $this->arrayManager = $arrayManager;
         $this->scopeConfig = $scopeConfig;
