@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace AvS\ScopeHint\Plugin;
 
 use Magento\Catalog\Api\ProductRepositoryInterface;
@@ -11,16 +13,16 @@ use Magento\Catalog\Model\Attribute\ScopeOverriddenValue;
 class ProductEavDataProviderPlugin
 {
     /** @var StoreManagerInterface */
-    private $storeManager;
+    private StoreManagerInterface $storeManager;
 
     /** @var Registry */
-    private $registry;
+    private Registry $registry;
 
     /** @var ProductRepositoryInterface */
-    private $productRepository;
+    private ProductRepositoryInterface $productRepository;
 
     /** @var array */
-    private $stores;
+    private ?array $stores = null;
 
     /**
      * ProductEavDataProviderPlugin constructor.
@@ -116,7 +118,7 @@ class ProductEavDataProviderPlugin
     /**
      * @return array
      */
-    private function getStores()
+    private function getStores(): array
     {
         if (!$this->stores) {
             $this->stores = $this->storeManager->getStores();
