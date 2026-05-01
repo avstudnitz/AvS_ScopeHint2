@@ -38,4 +38,11 @@
             </argument>
         </arguments>
     </type>
+
+    <type name="Magento\Catalog\Model\Category\DataProvider">
+        <plugin name="avs_scopehint_category_dataprovider"
+                type="AvS\ScopeHint\Plugin\CategoryDataProviderPlugin"
+                sortOrder="1"
+                disabled="false" />
+    </type>
 </config>

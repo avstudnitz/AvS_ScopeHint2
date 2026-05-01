@@ -69,6 +69,18 @@ Licence
 -------
 [OSL - Open Software Licence 3.0](http://opensource.org/licenses/osl-3.0.php)
 
+Performance
+-----------
+When a category is edited at a non-default store-view scope, the module loads the category once per
+store view to check for overridden attribute values. On large setups this can issue many
+`CategoryRepository::get()` calls (one per store per page load of the category edit form).
+To prevent excessive load, detection is automatically skipped — and a warning is written to the Magento
+system log — when the total number of store views exceeds the configurable threshold.
+
+The threshold is set under:
+**Stores → Settings → Configuration → Advanced → Developer → Debug → Maximum stores for scope hint detection**
+(config path `dev/debug/scopehint_max_stores`, default **50**).
+
 Copyright
 ---------
 (c) 2017-2024 Andreas von Studnitz
