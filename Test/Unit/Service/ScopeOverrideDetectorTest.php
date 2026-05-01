@@ -11,12 +11,14 @@ use Magento\Config\Model\Config\Structure\Element\Field;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Escaper;
+use Magento\Framework\ObjectManagerInterface;
 use Magento\Store\Api\Data\StoreInterface;
 use Magento\Store\Api\Data\WebsiteInterface;
 use Magento\Store\Api\StoreRepositoryInterface;
 use Magento\Store\Api\WebsiteRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 
 class ScopeOverrideDetectorTest extends TestCase
 {
@@ -57,7 +59,10 @@ class ScopeOverrideDetectorTest extends TestCase
             $this->storeRepository,
             $this->request,
             $this->escaper,
-            new OptionLabelResolver()
+            new OptionLabelResolver(
+                $this->createMock(ObjectManagerInterface::class),
+                $this->createMock(LoggerInterface::class)
+            )
         );
     }
 
