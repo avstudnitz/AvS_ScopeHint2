@@ -8,3 +8,205 @@
 //
 //  Common styles
 //  ---------------------------------------------
+
+
+//
+//  ScopeHint Popover
+//  ---------------------------------------------
+//
+//  Uses standard Magento backend LESS variables where available.
+//  Fallback hex values are kept for themes that may not define all vars.
+//
+//  Variables used (verify in vendor/magento/theme-adminhtml-backend):
+//    @field-label__color          — defined in variables/_forms.less
+//    @field-control__border-color — defined in variables/_forms.less
+//    @field-control__focus__border-color (= @color-blue-pure #007bdb)
+//    @color-white                 — defined in variables/_colors.less
+//    @page__background-color      — defined in lib/web/css (= @color-white)
+//
+
+.scopehint-popover {
+    display: inline-block;
+    position: relative;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+.scopehint-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    min-width: 24px;
+    height: 24px;
+    border: 1px solid @field-control__border-color;
+    border-radius: 12px;
+    background: @color-white;
+    color: @field-label__color;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+
+    &:hover,
+    &:focus {
+        border-color: @field-control__focus__border-color;
+        outline: none;
+    }
+
+    &[aria-expanded="true"] {
+        background: @field-control__focus__border-color;
+        border-color: @field-control__focus__border-color;
+        color: @color-white;
+    }
+}
+
+.scopehint-badge {
+    pointer-events: none;
+}
+
+.scopehint-panel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 999;
+    min-width: 280px;
+    max-width: 480px;
+    max-height: 60vh;
+    overflow-y: auto;
+    background: @color-white;
+    border: 1px solid @field-control__border-color;
+    border-radius: 2px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+    margin-top: 4px;
+
+    &[hidden] {
+        display: none;
+    }
+}
+
+.scopehint-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    border-bottom: 1px solid @field-control__border-color;
+    background: @color-white;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.scopehint-search {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid @field-control__border-color;
+    border-radius: 2px;
+    font-size: 12px;
+    color: @field-label__color;
+    background: @color-white;
+
+    &:focus {
+        border-color: @field-control__focus__border-color;
+        outline: none;
+    }
+}
+
+.scopehint-close {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: @field-label__color;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+
+    &:hover,
+    &:focus {
+        background: @field-control__border-color;
+        outline: none;
+    }
+}
+
+.scopehint-websites {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    > li {
+        border-bottom: 1px solid @field-control__border-color;
+
+        &:last-child {
+            border-bottom: none;
+        }
+
+        &[data-search-hidden="true"] {
+            display: none;
+        }
+    }
+
+    details {
+        > summary {
+            padding: 8px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            color: @field-label__color;
+            list-style: none;
+            user-select: none;
+
+            &::-webkit-details-marker {
+                display: none;
+            }
+
+            &::before {
+                content: '\25B6\00A0';
+                font-size: 10px;
+                display: inline-block;
+                transition: transform 0.15s;
+            }
+
+            &:hover,
+            &:focus {
+                background: @field-control__border-color;
+                outline: none;
+            }
+        }
+
+        &[open] > summary::before {
+            transform: rotate(90deg);
+        }
+
+        > ul {
+            list-style: none;
+            margin: 0;
+            padding: 0 0 4px 0;
+
+            > li {
+                padding: 4px 10px 4px 24px;
+                font-size: 12px;
+                color: @field-label__color;
+
+                &[data-search-hidden="true"] {
+                    display: none;
+                }
+
+                code {
+                    font-family: monospace;
+                    background: @field-control__border-color;
+                    padding: 0 3px;
+                    border-radius: 2px;
+                    font-size: 11px;
+                }
+            }
+        }
+    }
+}

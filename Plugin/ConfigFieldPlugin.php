@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace AvS\ScopeHint\Plugin;
 
 use AvS\ScopeHint\Api\Data\ScopeOverrideInterface;
+use AvS\ScopeHint\Block\Adminhtml\System\Config\Popover;
 use AvS\ScopeHint\Service\ScopeOverrideDetectorInterface;
 use Magento\Config\Model\Config\Structure\Element\Field as Subject;
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\View\LayoutInterface;
 
 class ConfigFieldPlugin
 {
-    private const CONFIG_SHOW_PATH = 'dev/debug/show_path_in_adminhtml';
+    private const CONFIG_SHOW_PATH     = 'dev/debug/show_path_in_adminhtml';
+    private const CONFIG_LEGACY_TOOLTIP = 'dev/debug/scopehint_legacy_tooltip';
 
     /** @var ScopeConfigInterface */
     private $scopeConfig;
@@ -19,15 +22,20 @@ class ConfigFieldPlugin
     /** @var ScopeOverrideDetectorInterface */
     private $detector;
 
+    /** @var LayoutInterface */
+    private $layout;
+
     /** @var bool */
     private $isProcessing = false;
 
     public function __construct(
         ScopeConfigInterface $scopeConfig,
-        ScopeOverrideDetectorInterface $detector
+        ScopeOverrideDetectorInterface $detector,
+        LayoutInterface $layout
     ) {
         $this->scopeConfig = $scopeConfig;
-        $this->detector = $detector;
+        $this->detector    = $detector;
+        $this->layout      = $layout;
     }
 
     /**
@@ -37,18 +45,30 @@ class ConfigFieldPlugin
      */
     public function afterGetTooltip(Subject $subject, $result)
     {
-        $path = $this->getPath($subject);
+        $path      = $this->getPath($subject);
         $overrides = $this->detector->getOverrides($path, $subject);
 
         if ($overrides->isEmpty()) {
             return $result;
         }
 
-        $lines = $result === '' || $result === null ? [] : [$result];
-        foreach ($overrides->getOverrides() as $override) {
-            $lines[] = $this->renderLine($override);
+        if ($this->scopeConfig->isSetFlag(self::CONFIG_LEGACY_TOOLTIP)) {
+            $lines = $result === '' || $result === null ? [] : [$result];
+            foreach ($overrides->getOverrides() as $override) {
+                $lines[] = $this->renderLine($override);
+            }
+            return implode('<br />', $lines);
         }
-        return implode('<br />', $lines);
+
+        /** @var Popover $block */
+        $block = $this->layout->createBlock(Popover::class);
+        $block->setOverrides($overrides);
+        $popoverHtml = $block->toHtml();
+
+        if ($result === '' || $result === null) {
+            return $popoverHtml;
+        }
+        return $result . $popoverHtml;
     }
 
     /**
