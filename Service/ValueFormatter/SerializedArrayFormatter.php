@@ -19,10 +19,6 @@ class SerializedArrayFormatter implements ValueFormatterInterface
 
     public function supports(Field $field): bool
     {
-        if (!is_array($field->getValue()) && !$this->isSerializedBackend($field)) {
-            return false;
-        }
-
         return $this->isSerializedBackend($field);
     }
 

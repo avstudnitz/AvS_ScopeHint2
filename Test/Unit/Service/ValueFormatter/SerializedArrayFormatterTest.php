@@ -31,10 +31,8 @@ class SerializedArrayFormatterTest extends TestCase
         $field = $this->getMockBuilder(Field::class)
             ->disableOriginalConstructor()
             ->onlyMethods(['getBackendModel'])
-            ->addMethods(['getValue'])
             ->getMock();
         $field->method('getBackendModel')->willReturn($backendModel);
-        $field->method('getValue')->willReturn(null);
 
         return $field;
     }
