@@ -4,42 +4,60 @@ declare(strict_types=1);
 
 namespace AvS\ScopeHint\Plugin;
 
-use AvS\ScopeHint\Service\EavScopeOverrideDetector;
+use AvS\ScopeHint\Block\Adminhtml\Eav\Popover;
+use AvS\ScopeHint\Service\OverrideSourcePool;
 use Magento\Catalog\Model\Category\DataProvider;
-use Magento\Catalog\Model\ResourceModel\Eav\Attribute as EavAttribute;
-use Magento\Eav\Model\Config as EavConfig;
-use Magento\Framework\App\RequestInterface;
+use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Stdlib\ArrayManager;
-use Magento\Store\Model\Store;
+use Magento\Framework\View\LayoutInterface;
 
+/**
+ * Injects scope-override popovers into category EAV form field meta.
+ *
+ * Override detection is delegated to OverrideSourcePool, which dispatches to
+ * the first registered OverrideSourceInterface whose supports() returns true.
+ * The default source (EavCategoryOverrideSource) covers real Magento EAV
+ * category attributes. Third-party modules can register additional sources via
+ * di.xml to cover synthetic fields.
+ *
+ * The popover HTML is written into the `additionalInfo` field-meta key, which
+ * Knockout renders via html= inside `.admin__field-control`. A small JS
+ * bootstrap (popover-bootstrap.js) handles re-binding after KO injection.
+ *
+ * BC note: constructor changed in 1.4.0 — EavScopeOverrideDetector, EavConfig,
+ * RequestInterface, and ArrayManager were replaced by OverrideSourcePool,
+ * LayoutInterface, and ScopeConfigInterface. See CHANGELOG.md for details.
+ */
 class CategoryDataProviderPlugin
 {
-    /** @var EavScopeOverrideDetector */
-    private $detector;
+    private const CONFIG_LEGACY_TOOLTIP = 'dev/debug/scopehint_legacy_tooltip';
 
-    /** @var EavConfig */
-    private $eavConfig;
+    /** @var OverrideSourcePool */
+    private $overrideSourcePool;
 
-    /** @var RequestInterface */
-    private $request;
+    /** @var LayoutInterface */
+    private $layout;
+
+    /** @var ScopeConfigInterface */
+    private $scopeConfig;
 
     /** @var ArrayManager */
     private $arrayManager;
 
     public function __construct(
-        EavScopeOverrideDetector $detector,
-        EavConfig $eavConfig,
-        RequestInterface $request,
+        OverrideSourcePool $overrideSourcePool,
+        LayoutInterface $layout,
+        ScopeConfigInterface $scopeConfig,
         ArrayManager $arrayManager
     ) {
-        $this->detector = $detector;
-        $this->eavConfig = $eavConfig;
-        $this->request = $request;
+        $this->overrideSourcePool = $overrideSourcePool;
+        $this->layout = $layout;
+        $this->scopeConfig = $scopeConfig;
         $this->arrayManager = $arrayManager;
     }
 
     /**
-     * Inject scope-override tooltips into the category form meta.
+     * Inject scope-override popovers into the category form meta.
      *
      * @param DataProvider $subject
      * @param array $result
@@ -54,60 +72,71 @@ class CategoryDataProviderPlugin
         }
 
         $categoryId = (int) $category->getId();
-        $storeId = $this->getCurrentStoreId();
+        $isLegacy = $this->scopeConfig->isSetFlag(self::CONFIG_LEGACY_TOOLTIP);
 
-        // Only show overrides when editing in a non-default scope.
-        if ($storeId === Store::DEFAULT_STORE_ID) {
-            return $result;
-        }
+        foreach ($this->iterateFieldMeta($result) as $attributePath => $fieldMeta) {
+            $overrides = $this->overrideSourcePool->resolve('category', $categoryId, $fieldMeta);
 
-        try {
-            $attributes = $this->eavConfig->getEntityType('catalog_category')->getAttributeCollection();
-        } catch (\Throwable $e) {
-            return $result;
-        }
-
-        /** @var EavAttribute $attribute */
-        foreach ($attributes as $attribute) {
-            if ($attribute->isScopeGlobal()) {
+            if ($overrides === null || $overrides->isEmpty()) {
                 continue;
             }
 
-            $attributeCode = $attribute->getAttributeCode();
-            $attributePath = $this->arrayManager->findPath($attributeCode, $result);
+            if ($isLegacy) {
+                $lines = [];
 
-            if ($attributePath === null) {
+                foreach ($overrides->getOverrides() as $override) {
+                    $lines[] = $override->getScopeName() . ': ' . $override->getDisplayValue();
+                }
+
+                $result = $this->arrayManager->merge(
+                    $attributePath . '/arguments/data/config',
+                    $result,
+                    ['tooltip' => ['description' => implode('<br>', $lines)]]
+                );
+
                 continue;
             }
 
-            $overrides = $this->detector->getCategoryOverrides($categoryId, $attribute, $storeId);
+            /** @var Popover $popoverBlock */
+            $popoverBlock = $this->layout->createBlock(Popover::class);
+            $popoverBlock->setOverrides($overrides);
+            $popoverHtml = $popoverBlock->toHtml();
 
-            if ($overrides->isEmpty()) {
-                continue;
+            if ($popoverHtml !== '') {
+                $result = $this->arrayManager->merge(
+                    $attributePath . '/arguments/data/config',
+                    $result,
+                    ['additionalInfo' => $popoverHtml]
+                );
             }
-
-            $lines = [];
-
-            foreach ($overrides->getOverrides() as $override) {
-                $lines[] = $override->getScopeName() . ': ' . $override->getDisplayValue();
-            }
-
-            $tooltipDescription = implode('<br>', $lines);
-
-            $result = $this->arrayManager->merge(
-                $attributePath . '/arguments/data/config',
-                $result,
-                ['tooltip' => ['description' => $tooltipDescription]]
-            );
         }
 
         return $result;
     }
 
-    private function getCurrentStoreId(): int
+    /**
+     * Walk the meta tree and yield every field-level config keyed by its path.
+     *
+     * @param array $meta Top-level meta array (fieldset → children → field).
+     * @return iterable<string, array> Yields $attributePath => $fieldMeta pairs.
+     */
+    private function iterateFieldMeta(array $meta): iterable
     {
-        $storeParam = $this->request->getParam('store', Store::DEFAULT_STORE_ID);
+        foreach ($meta as $fieldsetName => $fieldset) {
+            $children = $fieldset['children'] ?? [];
 
-        return (int) $storeParam;
+            foreach ($children as $fieldName => $fieldNode) {
+                $fieldMeta = $fieldNode['arguments']['data']['config'] ?? null;
+
+                if (!is_array($fieldMeta)) {
+                    continue;
+                }
+
+                // Derive the path that arrayManager->merge() expects.
+                $path = $fieldsetName . '/children/' . $fieldName;
+
+                yield $path => $fieldMeta;
+            }
+        }
     }
 }

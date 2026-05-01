@@ -4,127 +4,106 @@ declare(strict_types=1);
 
 namespace AvS\ScopeHint\Plugin;
 
-use Magento\Catalog\Api\ProductRepositoryInterface;
+use AvS\ScopeHint\Block\Adminhtml\Eav\Popover;
+use AvS\ScopeHint\Service\OverrideSourcePool;
 use Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\Eav;
+use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Registry;
-use Magento\Store\Model\StoreManagerInterface;
-use Magento\Catalog\Model\Attribute\ScopeOverriddenValue;
+use Magento\Framework\View\LayoutInterface;
 
+/**
+ * Injects scope-override popovers into product EAV form field meta.
+ *
+ * Override detection is delegated to OverrideSourcePool, which dispatches to
+ * the first registered OverrideSourceInterface whose supports() returns true.
+ * The default source (EavProductOverrideSource) covers real Magento EAV
+ * attributes. Third-party modules can register additional sources via di.xml to
+ * cover synthetic fields (e.g. Hyva SeoSuite metadata).
+ *
+ * The popover HTML is written into the `additionalInfo` field-meta key, which
+ * Knockout renders via html= inside `.admin__field-control`. A small JS
+ * bootstrap (popover-bootstrap.js) handles re-binding after KO injection because
+ * mage/apply does not re-run on KO-injected nodes.
+ *
+ * BC note: constructor changed in 1.4.0 — StoreManagerInterface, Registry, and
+ * ProductRepositoryInterface were moved to EavProductOverrideSource. Registry
+ * is retained here because it is needed to retrieve the current product ID.
+ * See CHANGELOG.md for migration notes.
+ */
 class ProductEavDataProviderPlugin
 {
-    /** @var StoreManagerInterface */
-    private StoreManagerInterface $storeManager;
+    private const CONFIG_LEGACY_TOOLTIP = 'dev/debug/scopehint_legacy_tooltip';
+
+    /** @var OverrideSourcePool */
+    private $overrideSourcePool;
+
+    /** @var LayoutInterface */
+    private $layout;
+
+    /** @var ScopeConfigInterface */
+    private $scopeConfig;
 
     /** @var Registry */
-    private Registry $registry;
+    private $registry;
 
-    /** @var ProductRepositoryInterface */
-    private ProductRepositoryInterface $productRepository;
-
-    /** @var array */
-    private ?array $stores = null;
-
-    /**
-     * ProductEavDataProviderPlugin constructor.
-     *
-     * @param StoreManagerInterface $storeManager
-     * @param Registry $registry
-     * @param ProductRepositoryInterface $productRepository
-     */
     public function __construct(
-        StoreManagerInterface $storeManager,
-        Registry $registry,
-        ProductRepositoryInterface $productRepository
+        OverrideSourcePool $overrideSourcePool,
+        LayoutInterface $layout,
+        ScopeConfigInterface $scopeConfig,
+        Registry $registry
     ) {
-        $this->storeManager = $storeManager;
+        $this->overrideSourcePool = $overrideSourcePool;
+        $this->layout = $layout;
+        $this->scopeConfig = $scopeConfig;
         $this->registry = $registry;
-        $this->productRepository = $productRepository;
     }
 
     /**
-     * @param Eav $subject
-     * @param $result
+     * @param Eav   $subject
+     * @param mixed $result
      * @return mixed
      */
     public function afterSetupAttributeMeta(Eav $subject, $result)
     {
-        if (!isset($result['arguments']['data']['config']['code'])
-            || $result['arguments']['data']['config']['globalScope']
-            || $result['arguments']['data']['config']['code'] == 'quantity_and_stock_status'
-        ) {
+        if (!isset($result['arguments']['data']['config'])) {
             return $result;
         }
 
-        $scopeHints = [];
-        $attributeCode = $result['arguments']['data']['config']['code'];
-        $storeViews = $this->getStores();
         $product = $this->registry->registry('current_product');
 
         if ($product === null || $product->getId() === null) {
             return $result;
         }
 
-        foreach ($storeViews as $storeView) {
-            $productByStoreCode = $this->getProductInStoreView($product->getId(), $storeView->getId());
-            $currentScopeValueForCode = $value = $productByStoreCode->getData($attributeCode);
+        $productId = (int) $product->getId();
+        $fieldMeta = $result['arguments']['data']['config'];
+        $overrides = $this->overrideSourcePool->resolve('product', $productId, $fieldMeta);
 
-            if ($result['arguments']['data']['config']['dataType'] == 'select'
-                && $currentScopeValueForCode !== null
-                && !is_array($currentScopeValueForCode)
-            ) {
-                $value = $productByStoreCode->getResource()->getAttribute($attributeCode)->getSource()->getOptionText($currentScopeValueForCode);
+        if ($overrides === null || $overrides->isEmpty()) {
+            return $result;
+        }
+
+        if ($this->scopeConfig->isSetFlag(self::CONFIG_LEGACY_TOOLTIP)) {
+            $lines = [];
+
+            foreach ($overrides->getOverrides() as $override) {
+                $lines[] = $override->getScopeName() . ': ' . $override->getDisplayValue();
             }
 
-            // This checks if we can cast $value to a string
-            // If this fails, we json_encode the value, so we eventually do get a string representation
-            // If the json_encode fails for some reason, we just ignore it and won't output anything
-            //
-            // This problem can be seen in practice when:
-            // - having at least 2 websites
-            // - having the catalog price scope set to Website
-            // - using different tier prices for a single product over multiple websites
-            // (Another bug in that particular case, is that the tooltip doesn't seem to show up, so that's another thing which will need to get fixed someday)
-            $valueAsString = null;
-            try {
-                $valueAsString = (string) $value;
-            } catch (\Throwable $ex) {
-                $valueAsString = json_encode($value);
-                if ($valueAsString === false) {
-                    $valueAsString = null;
-                }
-            }
+            $result['arguments']['data']['config']['tooltip']['description'] = implode('<br>', $lines);
 
-            if ($valueAsString !== null && $product->getData($attributeCode) !== $currentScopeValueForCode) {
-                $scopeHints[] = $storeView->getName() . ': ' . $valueAsString;
-            }
+            return $result;
+        }
 
-            if (!empty($scopeHints)) {
-                $result['arguments']['data']['config']['tooltip']['description'] = implode('<br>', $scopeHints);
-            }
+        /** @var Popover $popoverBlock */
+        $popoverBlock = $this->layout->createBlock(Popover::class);
+        $popoverBlock->setOverrides($overrides);
+        $popoverHtml = $popoverBlock->toHtml();
+
+        if ($popoverHtml !== '') {
+            $result['arguments']['data']['config']['additionalInfo'] = $popoverHtml;
         }
 
         return $result;
-    }
-
-    /**
-     * @param int $productId
-     * @param int $storeViewId
-     * @return mixed
-     */
-    private function getProductInStoreView($productId, $storeViewId)
-    {
-        return $this->productRepository->getById($productId, false, $storeViewId);
-    }
-
-    /**
-     * @return array
-     */
-    private function getStores(): array
-    {
-        if (!$this->stores) {
-            $this->stores = $this->storeManager->getStores();
-        }
-
-        return $this->stores;
     }
 }
