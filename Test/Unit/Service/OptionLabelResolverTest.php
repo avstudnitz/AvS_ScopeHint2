@@ -67,11 +67,10 @@ class OptionLabelResolverTest extends TestCase
     {
         $field = $this->getMockBuilder(Field::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['hasOptions', 'getType'])
-            ->addMethods(['getSourceModel'])
+            ->onlyMethods(['hasOptions', 'getType', 'getData'])
             ->getMock();
         $field->method('hasOptions')->willReturn(false);
-        $field->method('getSourceModel')->willReturn(null);
+        $field->method('getData')->with('source_model')->willReturn(null);
         $field->method('getType')->willReturn('text');
 
         self::assertSame('some text', $this->resolver->resolve($field, 'some text'));
@@ -199,11 +198,10 @@ class OptionLabelResolverTest extends TestCase
     {
         $field = $this->getMockBuilder(Field::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['hasOptions', 'getType'])
-            ->addMethods(['getSourceModel'])
+            ->onlyMethods(['hasOptions', 'getType', 'getData'])
             ->getMock();
         $field->method('hasOptions')->willReturn(false);
-        $field->method('getSourceModel')->willReturn($sourceModelFqcn);
+        $field->method('getData')->with('source_model')->willReturn($sourceModelFqcn);
         $field->method('getType')->willReturn('select');
         return $field;
     }

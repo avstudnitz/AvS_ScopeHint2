@@ -67,9 +67,9 @@ class OptionLabelResolver
             return $this->matchOption($field->getOptions(), $value);
         }
 
-        $sourceModel = $field->getSourceModel();
-        if ($sourceModel !== null && $sourceModel !== '') {
-            $options = $this->getSourceModelOptions((string) $sourceModel);
+        $sourceModel = $field->getData('source_model');
+        if (is_string($sourceModel) && $sourceModel !== '') {
+            $options = $this->getSourceModelOptions($sourceModel);
             if ($options !== null) {
                 return $this->matchOption($options, $value);
             }
