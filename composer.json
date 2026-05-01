@@ -2,8 +2,18 @@
     "name": "avstudnitz/scopehint2",
     "description": "Displays a hint when a configuration value is overwritten on a lower scope (website or store view).",
     "require": {
-        "magento/framework": "~102.0|~103.0",
-        "magento/module-config": "~100.0|~101.0"
+        "php": "^7.4|~8.1.0|~8.2.0|~8.3.0",
+        "magento/framework": "~103.0",
+        "magento/module-config": "~101.2",
+        "magento/module-store": "~101.1",
+        "magento/module-backend": "~102.0",
+        "magento/module-catalog": "~104.0",
+        "magento/module-ui": "~101.2"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^1.10",
+        "phpunit/phpunit": "^9.5",
+        "magento/magento-coding-standard": "*"
     },
     "type": "magento2-module",
     "license": [

@@ -1,0 +1,14 @@
+parameters:
+    level: 5
+    paths:
+        - Plugin
+        - Service
+        - Block
+        - Model
+        - Api
+        - Ui
+    excludePaths:
+        - Test/*
+    treatPhpDocTypesAsCertain: false
+    ignoreErrors:
+        - '#Call to an undefined method Magento\\Framework\\Data\\Form\\Element\\AbstractElement::#'

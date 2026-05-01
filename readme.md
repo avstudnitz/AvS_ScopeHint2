@@ -22,11 +22,12 @@ Stores -> Settings -> Configuration -> Advanced -> Developer -> Debug -> `Displa
 
 Requirements
 ------------
-- PHP >= 5.6.0
+- PHP 7.4, 8.1, 8.2, or 8.3
 
 Compatibility
 -------------
-- Magento  >= 2.1.0 (not tested on 2.0.x)
+- Magento 2.4.x (Open Source and Commerce)
+- Compatible with the default backend theme, the Mage-OS M137 admin theme, and the Hyvä commerce admin theme
 
 Installation Instructions
 -------------------------
