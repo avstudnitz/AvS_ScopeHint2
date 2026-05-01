@@ -58,6 +58,39 @@ class SerializedArrayFormatterTest extends TestCase
         self::assertFalse($this->formatter->supports($field));
     }
 
+    public function testSupportsObjectBackendInstance(): void
+    {
+        // Magento sometimes returns an instantiated backend model object instead of a FQCN
+        // string from getBackendModel(). The formatter must handle both cases via get_class().
+        $unrelatedBackend = new \stdClass();
+        $serializedBackend = $this->createMock(\Magento\Config\Model\Config\Backend\Serialized\ArraySerialized::class);
+
+        $field1 = $this->getMockBuilder(Field::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getBackendModel'])
+            ->getMock();
+        $field1->method('getBackendModel')->willReturn($serializedBackend);
+        self::assertTrue($this->formatter->supports($field1));
+
+        $field2 = $this->getMockBuilder(Field::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getBackendModel'])
+            ->getMock();
+        $field2->method('getBackendModel')->willReturn($unrelatedBackend);
+        self::assertFalse($this->formatter->supports($field2));
+    }
+
+    public function testHandlesNonStringNonObjectBackend(): void
+    {
+        $field = $this->getMockBuilder(Field::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getBackendModel'])
+            ->getMock();
+        $field->method('getBackendModel')->willReturn(null);
+
+        self::assertFalse($this->formatter->supports($field));
+    }
+
     public function testFormatArrayValueReturnsRowCount(): void
     {
         $field = $this->fieldWithBackend('Magento\Config\Model\Config\Backend\Serialized');

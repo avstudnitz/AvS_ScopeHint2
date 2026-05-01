@@ -63,21 +63,25 @@ class SerializedArrayFormatter implements ValueFormatterInterface
 
     private function isSerializedBackend(Field $field): bool
     {
-        $backendModel = (string) $field->getBackendModel();
+        $backendModel = $field->getBackendModel();
 
-        if ($backendModel === '') {
+        if (is_object($backendModel)) {
+            return $backendModel instanceof \Magento\Config\Model\Config\Backend\Serialized;
+        }
+
+        if (!is_string($backendModel) || $backendModel === '') {
             return false;
         }
 
-        if (strpos($backendModel, 'Magento\Config\Model\Config\Backend\Serialized') !== false) {
+        if (strpos($backendModel, 'Backend\\Serialized') !== false) {
             return true;
         }
 
-        if (strpos($backendModel, 'Config\Model\Config\Backend\Serialized\ArraySerialized') !== false) {
+        if (strpos($backendModel, 'FieldArray\\AbstractFieldArray') !== false) {
             return true;
         }
 
-        if (strpos($backendModel, 'FieldArray\AbstractFieldArray') !== false) {
+        if (is_subclass_of($backendModel, \Magento\Config\Model\Config\Backend\Serialized::class)) {
             return true;
         }
 

@@ -29,7 +29,7 @@ class FileFormatter implements ValueFormatterInterface
      */
     public function format($value, Field $field): string
     {
-        if ($value === null || $value === '') {
+        if ($value === null || $value === '' || !is_scalar($value)) {
             return '';
         }
 

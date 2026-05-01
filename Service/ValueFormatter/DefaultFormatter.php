@@ -38,6 +38,14 @@ class DefaultFormatter implements ValueFormatterInterface
             return $this->escaper->escapeHtml((string) __('(complex value)'));
         }
 
+        if (is_object($value) && !method_exists($value, '__toString')) {
+            return $this->escaper->escapeHtml((string) __('(complex value)'));
+        }
+
+        if ($value === null) {
+            return '';
+        }
+
         $resolved = $this->labelResolver->resolve($field, (string) $value);
 
         return $this->escaper->escapeHtml($resolved);
