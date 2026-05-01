@@ -28,7 +28,11 @@ class SerializedArrayFormatterTest extends TestCase
 
     private function fieldWithBackend(string $backendModel): Field
     {
-        $field = $this->createMock(Field::class);
+        $field = $this->getMockBuilder(Field::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getBackendModel'])
+            ->addMethods(['getValue'])
+            ->getMock();
         $field->method('getBackendModel')->willReturn($backendModel);
         $field->method('getValue')->willReturn(null);
 

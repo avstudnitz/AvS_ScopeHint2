@@ -65,7 +65,11 @@ class OptionLabelResolverTest extends TestCase
 
     public function testReturnsSingleValueUnchangedForNonSelectField(): void
     {
-        $field = $this->createMock(Field::class);
+        $field = $this->getMockBuilder(Field::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['hasOptions', 'getType'])
+            ->addMethods(['getSourceModel'])
+            ->getMock();
         $field->method('hasOptions')->willReturn(false);
         $field->method('getSourceModel')->willReturn(null);
         $field->method('getType')->willReturn('text');
@@ -193,7 +197,11 @@ class OptionLabelResolverTest extends TestCase
 
     private function createFieldWithSourceModel(string $sourceModelFqcn): Field
     {
-        $field = $this->createMock(Field::class);
+        $field = $this->getMockBuilder(Field::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['hasOptions', 'getType'])
+            ->addMethods(['getSourceModel'])
+            ->getMock();
         $field->method('hasOptions')->willReturn(false);
         $field->method('getSourceModel')->willReturn($sourceModelFqcn);
         $field->method('getType')->willReturn('select');

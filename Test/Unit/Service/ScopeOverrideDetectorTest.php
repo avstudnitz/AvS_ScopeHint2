@@ -7,6 +7,8 @@ namespace AvS\ScopeHint\Test\Unit\Service;
 use AvS\ScopeHint\Api\Data\ScopeOverrideInterface;
 use AvS\ScopeHint\Service\OptionLabelResolver;
 use AvS\ScopeHint\Service\ScopeOverrideDetector;
+use AvS\ScopeHint\Service\ValueFormatter\Pool;
+use AvS\ScopeHint\Service\ValueFormatter\ValueFormatterInterface;
 use Magento\Config\Model\Config\Structure\Element\Field;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\RequestInterface;
@@ -53,6 +55,16 @@ class ScopeOverrideDetectorTest extends TestCase
                 return is_string($v) ? htmlspecialchars($v, ENT_QUOTES) : (string) $v;
             });
 
+        $defaultFormatter = $this->createMock(ValueFormatterInterface::class);
+        $defaultFormatter->method('format')->willReturnCallback(static function ($value) {
+            if (is_array($value)) {
+                return '(complex value)';
+            }
+            return htmlspecialchars((string) $value, ENT_QUOTES);
+        });
+        $pool = $this->createMock(Pool::class);
+        $pool->method('resolve')->willReturn($defaultFormatter);
+
         $this->detector = new ScopeOverrideDetector(
             $this->scopeConfig,
             $this->websiteRepository,
@@ -62,7 +74,8 @@ class ScopeOverrideDetectorTest extends TestCase
             new OptionLabelResolver(
                 $this->createMock(ObjectManagerInterface::class),
                 $this->createMock(LoggerInterface::class)
-            )
+            ),
+            $pool
         );
     }
 

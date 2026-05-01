@@ -255,7 +255,10 @@ class EavScopeOverrideDetectorTest extends TestCase
      */
     private function createCategory(int $id, string $attributeCode, $value): CategoryInterface
     {
-        $category = $this->createMock(CategoryInterface::class);
+        $category = $this->getMockBuilder(CategoryInterface::class)
+            ->disableOriginalConstructor()
+            ->addMethods(['getData'])
+            ->getMockForAbstractClass();
         $category->method('getId')->willReturn($id);
         $category->method('getData')
             ->with($attributeCode)
