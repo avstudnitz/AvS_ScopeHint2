@@ -30,9 +30,11 @@ class SerializedArrayFormatterTest extends TestCase
     {
         $field = $this->getMockBuilder(Field::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['getBackendModel'])
+            ->onlyMethods(['getData'])
             ->getMock();
-        $field->method('getBackendModel')->willReturn($backendModel);
+        $field->method('getData')->willReturnCallback(static function ($key) use ($backendModel) {
+            return $key === 'backend_model' ? $backendModel : null;
+        });
 
         return $field;
     }
@@ -61,34 +63,40 @@ class SerializedArrayFormatterTest extends TestCase
     public function testSupportsObjectBackendInstance(): void
     {
         // Magento sometimes returns an instantiated backend model object instead of a FQCN
-        // string from getBackendModel(). The formatter must handle both cases via get_class().
+        // string. The formatter must handle both cases via instanceof.
         $unrelatedBackend = new \stdClass();
         $serializedBackend = $this->createMock(\Magento\Config\Model\Config\Backend\Serialized\ArraySerialized::class);
 
-        $field1 = $this->getMockBuilder(Field::class)
-            ->disableOriginalConstructor()
-            ->onlyMethods(['getBackendModel'])
-            ->getMock();
-        $field1->method('getBackendModel')->willReturn($serializedBackend);
+        $field1 = $this->fieldWithBackendObject($serializedBackend);
         self::assertTrue($this->formatter->supports($field1));
 
-        $field2 = $this->getMockBuilder(Field::class)
-            ->disableOriginalConstructor()
-            ->onlyMethods(['getBackendModel'])
-            ->getMock();
-        $field2->method('getBackendModel')->willReturn($unrelatedBackend);
+        $field2 = $this->fieldWithBackendObject($unrelatedBackend);
         self::assertFalse($this->formatter->supports($field2));
     }
 
-    public function testHandlesNonStringNonObjectBackend(): void
+    public function testHandlesMissingBackendModelKey(): void
+    {
+        // Field::getBackendModel() in Magento warns "Undefined array key 'backend_model'"
+        // when the field has no backend model. Using getData() instead returns null safely.
+        $field = $this->getMockBuilder(Field::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getData'])
+            ->getMock();
+        $field->method('getData')->willReturn(null);
+
+        self::assertFalse($this->formatter->supports($field));
+    }
+
+    private function fieldWithBackendObject(object $backend): Field
     {
         $field = $this->getMockBuilder(Field::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['getBackendModel'])
+            ->onlyMethods(['getData'])
             ->getMock();
-        $field->method('getBackendModel')->willReturn(null);
-
-        self::assertFalse($this->formatter->supports($field));
+        $field->method('getData')->willReturnCallback(static function ($key) use ($backend) {
+            return $key === 'backend_model' ? $backend : null;
+        });
+        return $field;
     }
 
     public function testFormatArrayValueReturnsRowCount(): void

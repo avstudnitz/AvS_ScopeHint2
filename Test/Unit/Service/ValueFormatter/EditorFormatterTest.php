@@ -38,7 +38,7 @@ class EditorFormatterTest extends TestCase
     {
         $field = $this->createMock(Field::class);
         $field->method('getType')->willReturn('editor');
-        $field->method('getFrontendModel')->willReturn('');
+        $field->method('getData')->with('frontend_model')->willReturn(null);
 
         self::assertTrue($this->formatter->supports($field));
     }
@@ -47,7 +47,7 @@ class EditorFormatterTest extends TestCase
     {
         $field = $this->createMock(Field::class);
         $field->method('getType')->willReturn('textarea');
-        $field->method('getFrontendModel')->willReturn('Magento\PageBuilder\Block\Form\Element\Pagebuilder');
+        $field->method('getData')->with('frontend_model')->willReturn('Magento\PageBuilder\Block\Form\Element\Pagebuilder');
 
         self::assertTrue($this->formatter->supports($field));
     }
@@ -56,7 +56,7 @@ class EditorFormatterTest extends TestCase
     {
         $field = $this->createMock(Field::class);
         $field->method('getType')->willReturn('text');
-        $field->method('getFrontendModel')->willReturn('');
+        $field->method('getData')->with('frontend_model')->willReturn(null);
 
         self::assertFalse($this->formatter->supports($field));
     }

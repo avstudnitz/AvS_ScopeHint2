@@ -63,7 +63,7 @@ class SerializedArrayFormatter implements ValueFormatterInterface
 
     private function isSerializedBackend(Field $field): bool
     {
-        $backendModel = $field->getBackendModel();
+        $backendModel = $field->getData('backend_model');
 
         if (is_object($backendModel)) {
             return $backendModel instanceof \Magento\Config\Model\Config\Backend\Serialized;
