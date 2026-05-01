@@ -8,6 +8,7 @@ use AvS\ScopeHint\Api\Data\OverrideResultInterface;
 use AvS\ScopeHint\Api\Data\ScopeOverrideInterface;
 use AvS\ScopeHint\Model\Data\OverrideResult;
 use AvS\ScopeHint\Model\Data\ScopeOverride;
+use AvS\ScopeHint\Service\ValueFormatter\Pool;
 use Magento\Config\Model\Config\Structure\Element\Field as Subject;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\RequestInterface;
@@ -37,13 +38,17 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
     /** @var OptionLabelResolver */
     private $labelResolver;
 
+    /** @var Pool */
+    private $formatterPool;
+
     public function __construct(
         ScopeConfigInterface $scopeConfig,
         WebsiteRepositoryInterface $websiteRepository,
         StoreRepositoryInterface $storeRepository,
         RequestInterface $request,
         Escaper $escaper,
-        OptionLabelResolver $labelResolver
+        OptionLabelResolver $labelResolver,
+        Pool $formatterPool
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->websiteRepository = $websiteRepository;
@@ -51,6 +56,7 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
         $this->request = $request;
         $this->escaper = $escaper;
         $this->labelResolver = $labelResolver;
+        $this->formatterPool = $formatterPool;
     }
 
     public function getOverrides(string $path, ?Subject $field = null): OverrideResultInterface
@@ -140,13 +146,16 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
      */
     private function formatDisplayValue($value, ?Subject $field): string
     {
+        if ($field !== null) {
+            return $this->formatterPool->resolve($field)->format($value, $field);
+        }
+
+        // Fallback path: no field context available.
         if (is_array($value)) {
             return $this->escaper->escapeHtml((string) __('(complex value)'));
         }
-        $resolved = $field !== null
-            ? $this->labelResolver->resolve($field, (string) $value)
-            : (string) $value;
-        return $this->escaper->escapeHtml($resolved);
+
+        return $this->escaper->escapeHtml((string) $value);
     }
 
     private function resolveWebsiteCodeForStore(StoreInterface $store): string
