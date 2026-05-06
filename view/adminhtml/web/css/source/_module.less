@@ -136,6 +136,50 @@
     }
 }
 
+//
+//  Cell-scoped popover overrides
+//  ---------------------------------------------
+//
+//  Reuses all base .scopehint-* rules; only overrides layout for the inline
+//  grid-cell context. The --cell modifier keeps the trigger smaller and renders
+//  the panel as a flat list (no website grouping needed at per-cell scope).
+//
+
+.scopehint-cell-default {
+    display: inline;
+    margin-right: .4rem;
+}
+
+.scopehint-popover--cell {
+    display: inline-flex;
+    vertical-align: middle;
+
+    .scopehint-trigger {
+        height: 2rem;
+        min-width: 2rem;
+        padding: 0 .6rem;
+        font-size: 1rem;
+    }
+
+    .scopehint-panel {
+        min-width: 24rem;
+        max-width: 36rem;
+    }
+
+    .scopehint-websites > li {
+        padding: .6rem 1.2rem;
+
+        &::before,
+        &::after {
+            display: none;
+        }
+    }
+}
+
+//
+//  Websites list
+//  ---------------------------------------------
+
 .scopehint-websites {
     list-style: none;
     margin: 0;

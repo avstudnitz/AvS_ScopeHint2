@@ -1,0 +1,99 @@
+<?php
+
+declare(strict_types=1);
+
+namespace AvS\ScopeHint\Block\Adminhtml\Catalog\Product\Grid;
+
+use Magento\Framework\Escaper;
+use Magento\Framework\Phrase;
+
+/**
+ * Renders the inline scope-override popover HTML for a single product grid cell.
+ *
+ * When no overrides exist, returns the default value unchanged (not re-escaped —
+ * the caller is responsible for escaping when building the plain cell value).
+ * When overrides exist, wraps the value with a pill button that opens a flat
+ * per-store list popover using the .scopehint-popover--cell LESS rules.
+ *
+ * The data-scopehint-popover attribute causes popover-bootstrap.js to bind the
+ * JS behaviour automatically via its MutationObserver when the enriched HTML
+ * lands in the grid.
+ */
+class CellPopover
+{
+    /** @var Escaper */
+    private $escaper;
+
+    public function __construct(Escaper $escaper)
+    {
+        $this->escaper = $escaper;
+    }
+
+    /**
+     * Render cell HTML for a product attribute column.
+     *
+     * @param string $defaultValue The raw default-scope value (will be HTML-escaped).
+     * @param array<int, array<string, string>> $overrides storeId → [displayValue, storeName, storeCode, websiteCode]
+     * @return string
+     */
+    public function render(string $defaultValue, array $overrides): string
+    {
+        if (empty($overrides)) {
+            return $defaultValue;
+        }
+
+        $panelId      = 'scopehint-cell-' . substr(md5(uniqid('', true)), 0, 12);
+        $count        = count($overrides);
+        $escapedValue = $this->escaper->escapeHtml($defaultValue);
+        $triggerLabel = $this->escaper->escapeHtmlAttr(
+            (string) new Phrase('%1 scope override(s) — click to expand', [$count])
+        );
+        $panelLabel  = $this->escaper->escapeHtmlAttr(
+            (string) new Phrase('%1 scope overrides', [$count])
+        );
+        $panelIdAttr = $this->escaper->escapeHtmlAttr($panelId);
+        $closeLabel  = $this->escaper->escapeHtmlAttr((string) new Phrase('Close'));
+
+        $html  = '<span class="scopehint-cell-default">' . $escapedValue . '</span>';
+        $html .= '<span class="scopehint-popover scopehint-popover--cell" data-scopehint-popover="1">';
+        $html .= '<button type="button"'
+            . ' class="scopehint-trigger"'
+            . ' aria-expanded="false"'
+            . ' aria-controls="' . $panelIdAttr . '"'
+            . ' aria-label="' . $triggerLabel . '">';
+        $html .= '<span class="scopehint-badge">' . (int) $count . '</span>';
+        $html .= '</button>';
+        $html .= '<div class="scopehint-panel"'
+            . ' id="' . $panelIdAttr . '"'
+            . ' role="dialog"'
+            . ' aria-modal="false"'
+            . ' aria-label="' . $panelLabel . '"'
+            . ' hidden>';
+        $html .= '<header class="scopehint-panel-header">';
+        $html .= '<button type="button" class="scopehint-close"'
+            . ' aria-label="' . $closeLabel . '">&#x00D7;</button>';
+        $html .= '</header>';
+        $html .= '<ul class="scopehint-websites">';
+
+        foreach ($overrides as $override) {
+            $storeName     = $this->escaper->escapeHtml((string) ($override['storeName'] ?? ''));
+            $storeCode     = $this->escaper->escapeHtml((string) ($override['storeCode'] ?? ''));
+            $storeCodeAttr = $this->escaper->escapeHtmlAttr((string) ($override['storeCode'] ?? ''));
+            $displayValue  = $this->escaper->escapeHtml((string) ($override['displayValue'] ?? ''));
+
+            $html .= '<li data-store-code="' . $storeCodeAttr . '">';
+            $html .= '<div class="scopehint-store-meta">';
+            $html .= '<span class="scopehint-store-name">' . $storeName . '</span>';
+            $html .= '<code class="scopehint-store-code">' . $storeCode . '</code>';
+            $html .= '</div>';
+            $html .= '<div class="scopehint-store-value">' . $displayValue . '</div>';
+            $html .= '</li>';
+        }
+
+        $html .= '</ul>';
+        $html .= '</div>';
+        $html .= '</span>';
+
+        return $html;
+    }
+}

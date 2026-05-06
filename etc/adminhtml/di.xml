@@ -13,6 +13,10 @@
                 type="AvS\ScopeHint\Plugin\ConfigFormFieldPlugin"
                 sortOrder="1"
                 disabled="false"/>
+        <plugin name="avs_scopehint_plugin_inject_popover"
+                type="AvS\ScopeHint\Plugin\ConfigBlockFieldPlugin"
+                sortOrder="20"
+                disabled="false"/>
     </type>
 
     <type name="Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\Eav">
@@ -26,6 +30,12 @@
                 disabled="false" />
     </type>
 
+    <type name="Magento\Catalog\Ui\DataProvider\Product\ProductDataProvider">
+        <plugin name="avs_scopehint_grid_inline_overrides"
+                type="AvS\ScopeHint\Plugin\ProductGridDataProviderPlugin"
+                sortOrder="1"
+                disabled="false" />
+    </type>
     <type name="AvS\ScopeHint\Service\ValueFormatter\Pool">
         <arguments>
             <argument name="formatters" xsi:type="array">
