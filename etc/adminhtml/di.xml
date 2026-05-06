@@ -30,6 +30,12 @@
                 disabled="false" />
     </type>
 
+    <type name="Magento\Catalog\Ui\Component\ColumnFactory">
+        <plugin name="avs_scopehint_column_factory_html_cells"
+                type="AvS\ScopeHint\Plugin\CatalogColumnFactoryPlugin"
+                sortOrder="1"
+                disabled="false"/>
+    </type>
     <type name="Magento\Catalog\Ui\DataProvider\Product\ProductDataProvider">
         <plugin name="avs_scopehint_grid_inline_overrides"
                 type="AvS\ScopeHint\Plugin\ProductGridDataProviderPlugin"
