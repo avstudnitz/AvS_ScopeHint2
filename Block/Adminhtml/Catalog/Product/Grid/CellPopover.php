@@ -42,6 +42,13 @@ class CellPopover
             return $defaultValue;
         }
 
+        $byWebsite = [];
+
+        foreach ($overrides as $override) {
+            $websiteCode = (string) ($override['websiteCode'] ?? '');
+            $byWebsite[$websiteCode][] = $override;
+        }
+
         $panelId      = 'scopehint-cell-' . substr(md5(uniqid('', true)), 0, 12);
         $count        = count($overrides);
         $escapedValue = $this->escaper->escapeHtml($defaultValue);
@@ -63,7 +70,7 @@ class CellPopover
             . ' aria-label="' . $triggerLabel . '">';
         $html .= '<span class="scopehint-badge">' . (int) $count . '</span>';
         $html .= '</button>';
-        $html .= '<div class="scopehint-panel"'
+        $html .= '<div class="scopehint-panel scopehint-panel--cell"'
             . ' id="' . $panelIdAttr . '"'
             . ' role="dialog"'
             . ' aria-modal="false"'
@@ -75,18 +82,35 @@ class CellPopover
         $html .= '</header>';
         $html .= '<ul class="scopehint-websites">';
 
-        foreach ($overrides as $override) {
-            $storeName     = $this->escaper->escapeHtml((string) ($override['storeName'] ?? ''));
-            $storeCode     = $this->escaper->escapeHtml((string) ($override['storeCode'] ?? ''));
-            $storeCodeAttr = $this->escaper->escapeHtmlAttr((string) ($override['storeCode'] ?? ''));
-            $displayValue  = $this->escaper->escapeHtml((string) ($override['displayValue'] ?? ''));
+        foreach ($byWebsite as $websiteCode => $websiteOverrides) {
+            $websiteCodeAttr = $this->escaper->escapeHtmlAttr((string) $websiteCode);
+            $storeCount      = count($websiteOverrides);
+            $summaryLabel    = $this->escaper->escapeHtml(
+                (string) new Phrase('Website: %1 (%2 override(s))', [(string) $websiteCode, $storeCount])
+            );
 
-            $html .= '<li data-store-code="' . $storeCodeAttr . '">';
-            $html .= '<div class="scopehint-store-meta">';
-            $html .= '<span class="scopehint-store-name">' . $storeName . '</span>';
-            $html .= '<code class="scopehint-store-code">' . $storeCode . '</code>';
-            $html .= '</div>';
-            $html .= '<div class="scopehint-store-value">' . $displayValue . '</div>';
+            $html .= '<li data-website-code="' . $websiteCodeAttr . '">';
+            $html .= '<details open>';
+            $html .= '<summary>' . $summaryLabel . '</summary>';
+            $html .= '<ul>';
+
+            foreach ($websiteOverrides as $override) {
+                $storeName     = $this->escaper->escapeHtml((string) ($override['storeName'] ?? ''));
+                $storeCode     = $this->escaper->escapeHtml((string) ($override['storeCode'] ?? ''));
+                $storeCodeAttr = $this->escaper->escapeHtmlAttr((string) ($override['storeCode'] ?? ''));
+                $displayValue  = $this->escaper->escapeHtml((string) ($override['displayValue'] ?? ''));
+
+                $html .= '<li data-store-code="' . $storeCodeAttr . '">';
+                $html .= '<div class="scopehint-store-meta">';
+                $html .= '<span class="scopehint-store-name">' . $storeName . '</span>';
+                $html .= '<code class="scopehint-store-code">' . $storeCode . '</code>';
+                $html .= '</div>';
+                $html .= '<div class="scopehint-store-value">' . $displayValue . '</div>';
+                $html .= '</li>';
+            }
+
+            $html .= '</ul>';
+            $html .= '</details>';
             $html .= '</li>';
         }
 

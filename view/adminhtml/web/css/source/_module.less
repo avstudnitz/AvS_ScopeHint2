@@ -160,19 +160,21 @@
         padding: 0 .6rem;
         font-size: 1rem;
     }
+}
 
-    .scopehint-panel {
-        min-width: 24rem;
-        max-width: 36rem;
-    }
+//
+//  Cell panel — applied to the portaled panel via `.scopehint-panel--cell`
+//  because position:fixed re-parents the panel to <body>, so descendant
+//  selectors under `.scopehint-popover--cell` no longer reach it.
+//
 
-    .scopehint-websites > li {
-        padding: .6rem 1.2rem;
+.scopehint-panel--cell {
+    min-width: 28rem;
+    max-width: 40rem;
+    padding-bottom: .4rem;
 
-        &::before,
-        &::after {
-            display: none;
-        }
+    .scopehint-panel-header {
+        padding: .8rem 1.2rem;
     }
 }
 
