@@ -14,7 +14,10 @@ define(['jquery'], function ($) {
         this.$search  = this.$root.find('.scopehint-search').first();
         this.$close   = this.$root.find('.scopehint-close').first();
 
-        this._outsideHandler = null;
+        this._outsideHandler  = null;
+        this._portaled        = false;
+        this._panelOrigParent = null;
+        this._panelOrigNext   = null;
 
         this._bind();
     }
@@ -86,6 +89,10 @@ define(['jquery'], function ($) {
         this.$trigger.attr('aria-expanded', 'true');
         this.$panel.removeAttr('hidden');
 
+        if (this.$root.hasClass('scopehint-popover--cell')) {
+            this._portalPanel();
+        }
+
         if (this.$search.length) {
             this.$search.trigger('focus');
         }
@@ -96,14 +103,69 @@ define(['jquery'], function ($) {
     Popover.prototype._close = function () {
         this.$trigger.attr('aria-expanded', 'false');
         this.$panel.attr('hidden', '');
+        if (this._portaled) {
+            this._restorePanel();
+        }
         this.$trigger.trigger('focus');
         this._unregisterOutsideClick();
+    };
+
+    Popover.prototype._portalPanel = function () {
+        if (this._portaled) {
+            return;
+        }
+        this._panelOrigParent = this.$panel.parent()[0];
+        this._panelOrigNext   = this.$panel[0].nextSibling;
+
+        var triggerRect = this.$trigger[0].getBoundingClientRect();
+        var top         = triggerRect.bottom + 8;
+        var left        = triggerRect.left;
+        var maxLeft     = window.innerWidth - 340;
+
+        if (left > maxLeft) {
+            left = maxLeft;
+        }
+        if (left < 0) {
+            left = 0;
+        }
+
+        this.$panel.css({
+            position: 'fixed',
+            top:      top + 'px',
+            left:     left + 'px',
+            right:    'auto',
+        });
+
+        document.body.appendChild(this.$panel[0]);
+        this._portaled = true;
+    };
+
+    Popover.prototype._restorePanel = function () {
+        if (!this._portaled) {
+            return;
+        }
+
+        this.$panel.css({ position: '', top: '', left: '', right: '' });
+
+        if (this._panelOrigParent) {
+            if (this._panelOrigNext && this._panelOrigNext.parentNode === this._panelOrigParent) {
+                this._panelOrigParent.insertBefore(this.$panel[0], this._panelOrigNext);
+            } else {
+                this._panelOrigParent.appendChild(this.$panel[0]);
+            }
+        }
+
+        this._portaled        = false;
+        this._panelOrigParent = null;
+        this._panelOrigNext   = null;
     };
 
     Popover.prototype._registerOutsideClick = function () {
         var self = this;
         this._outsideHandler = function (e) {
-            if (!self.$root[0].contains(e.target)) {
+            var insideRoot  = self.$root[0].contains(e.target);
+            var insidePanel = self.$panel[0].contains(e.target);
+            if (!insideRoot && !insidePanel) {
                 self._close();
             }
         };
