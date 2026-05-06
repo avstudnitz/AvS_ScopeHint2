@@ -22,11 +22,20 @@ define(['jquery'], function ($) {
     Popover.prototype._bind = function () {
         var self = this;
 
-        this.$trigger.on('click', function () {
+        // Block click propagation from anywhere inside the popover so that grid
+        // row-click handlers (admin product grid navigates to edit on row click)
+        // do not fire when the user interacts with the trigger or the panel.
+        this.$root.on('click', function (e) {
+            e.stopPropagation();
+        });
+
+        this.$trigger.on('click', function (e) {
+            e.preventDefault();
             self._toggle();
         });
 
-        this.$close.on('click', function () {
+        this.$close.on('click', function (e) {
+            e.preventDefault();
             self._close();
         });
 
