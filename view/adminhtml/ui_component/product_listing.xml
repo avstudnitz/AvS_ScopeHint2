@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
-    <columns name="product_columns" class="AvS\ScopeHint\Ui\Component\Listing\Columns\ProductOverrideColumns" />
+    <columns name="product_columns">
+        <column name="scopehint_overrides"
+                class="AvS\ScopeHint\Ui\Component\Listing\Column\ScopeOverrideIndicator"
+                sortOrder="200">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="filter" xsi:type="string">false</item>
+                    <item name="visible" xsi:type="boolean">false</item>
+                    <item name="sortOrder" xsi:type="number">200</item>
+                    <item name="label" xsi:type="string" translate="true">Overrides</item>
+                    <item name="component" xsi:type="string">Magento_Ui/js/grid/columns/column</item>
+                    <item name="bodyTmpl" xsi:type="string">ui/grid/cells/html</item>
+                </item>
+            </argument>
+        </column>
+    </columns>
 </listing>

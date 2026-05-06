@@ -9,7 +9,7 @@ use Magento\Framework\View\Element\UiComponent\ContextInterface;
 use Magento\Framework\View\Element\UiComponentFactory;
 use Magento\Ui\Component\Listing\Columns\Column;
 
-class StoreOverrideIndicator extends Column
+class ScopeOverrideIndicator extends Column
 {
     /** @var ProductOverrideAggregator */
     private $aggregator;
@@ -35,12 +35,6 @@ class StoreOverrideIndicator extends Column
             return $dataSource;
         }
 
-        $storeId = (int) $this->getData('config/storeId');
-
-        if ($storeId === 0) {
-            return $dataSource;
-        }
-
         $productIds = [];
 
         foreach ($dataSource['data']['items'] as $item) {
@@ -53,16 +47,16 @@ class StoreOverrideIndicator extends Column
             return $dataSource;
         }
 
-        $countsMap = $this->aggregator->getOverrideCounts($productIds);
-        $columnName = $this->getName();
+        $overrideCounts = $this->aggregator->getOverrideCounts($productIds);
+        $columnName = $this->getData('name');
 
         foreach ($dataSource['data']['items'] as &$item) {
             $entityId = isset($item['entity_id']) ? (int) $item['entity_id'] : 0;
-            $count = $countsMap[$entityId][$storeId] ?? 0;
+            $count = $overrideCounts[$entityId] ?? 0;
 
             if ($count > 0) {
                 $item[$columnName] = '<span class="scopehint-overrides-badge" title="'
-                    . (string) __('%1 attribute(s) overridden', $count)
+                    . (string) __('%1 store(s) have overrides on key attributes', $count)
                     . '">'
                     . (int) $count
                     . '</span>';
