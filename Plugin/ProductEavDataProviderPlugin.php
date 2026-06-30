@@ -69,6 +69,7 @@ class ProductEavDataProviderPlugin
             $currentScopeValueForCode = $value = $productByStoreCode->getData($attributeCode);
 
             if ($result['arguments']['data']['config']['dataType'] == 'select'
+                && $currentScopeValueForCode !== null
                 && !is_array($currentScopeValueForCode)
             ) {
                 $value = $productByStoreCode->getResource()->getAttribute($attributeCode)->getSource()->getOptionText($currentScopeValueForCode);
