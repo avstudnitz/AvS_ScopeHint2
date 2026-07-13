@@ -12,6 +12,7 @@ Description
 -----------
 Whenever a configuration setting is overwritten by a lower-level website or store view, an icon is displayed.
 Clicking the icon opens an accessible popover grouped by website with the overridden values.
+Product Page Builder attributes are supported, with rich content represented as a concise text preview.
 See the screenshot to get an impression of what the module does:
 
 ![Screenshot](scopehint2-screenshot.png?raw=true "ScopeHint for Magento 2")

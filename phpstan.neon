@@ -6,7 +6,6 @@ parameters:
         - Block
         - Model
         - Api
-        - Ui
     excludePaths:
         - Test/*
     treatPhpDocTypesAsCertain: false

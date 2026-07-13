@@ -29,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   add a separately escaped override popover.
 - Modern system-configuration popovers rendered next to each input, including
   support for Magento Backend and Hyvä Commerce admin themes.
+- Product Page Builder attributes show scope-override popovers with concise,
+  plain-text content previews instead of escaped Page Builder markup.
 
 ### Changed
 

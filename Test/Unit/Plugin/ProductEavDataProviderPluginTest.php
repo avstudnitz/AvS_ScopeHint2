@@ -145,6 +145,36 @@ class ProductEavDataProviderPluginTest extends TestCase
         self::assertStringContainsString('data-scopehint-popover', $output['arguments']['data']['config']['additionalInfo']);
     }
 
+    public function testSetsAdditionalInfoForPageBuilderAttributeMetadata(): void
+    {
+        $this->stubProduct(5);
+        $this->scopeConfig->method('isSetFlag')->willReturn(false);
+
+        $overrides = $this->createMock(OverrideResultInterface::class);
+        $overrides->method('isEmpty')->willReturn(false);
+
+        $fieldMeta = [
+            'code' => 'description',
+            'formElement' => 'wysiwyg',
+            'globalScope' => false,
+            'wysiwygConfigData' => ['is_pagebuilder_enabled' => true],
+        ];
+        $this->pool->expects(self::once())->method('resolve')->with('product', 5, $fieldMeta)
+            ->willReturn($overrides);
+
+        $popoverBlock = $this->createMock(Popover::class);
+        $popoverBlock->method('toHtml')->willReturn('<div data-scopehint-popover="1">POP</div>');
+        $popoverBlock->method('setOverrides')->willReturnSelf();
+        $this->layout->method('createBlock')->with(Popover::class)->willReturn($popoverBlock);
+
+        $output = $this->plugin->afterSetupAttributeMeta($this->subject, $this->buildResult($fieldMeta));
+
+        self::assertStringContainsString(
+            'data-scopehint-popover',
+            $output['arguments']['data']['config']['additionalInfo']
+        );
+    }
+
     public function testDoesNotSetTooltipDescriptionInDefaultMode(): void
     {
         $this->stubProduct(5);

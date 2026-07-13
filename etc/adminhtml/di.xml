@@ -61,6 +61,7 @@
     <type name="AvS\ScopeHint\Service\OverrideSourcePool">
         <arguments>
             <argument name="sources" xsi:type="array">
+                <item name="pagebuilder_product" xsi:type="object" sortOrder="50">AvS\ScopeHint\Service\OverrideSource\PageBuilderProductOverrideSource</item>
                 <item name="eav_product" xsi:type="object" sortOrder="100">AvS\ScopeHint\Service\OverrideSource\EavProductOverrideSource</item>
                 <item name="eav_category" xsi:type="object" sortOrder="200">AvS\ScopeHint\Service\OverrideSource\EavCategoryOverrideSource</item>
             </argument>
