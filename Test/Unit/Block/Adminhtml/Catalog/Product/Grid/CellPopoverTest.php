@@ -27,11 +27,11 @@ class CellPopoverTest extends TestCase
         $this->block = new CellPopover($this->escaper);
     }
 
-    public function testRenderReturnsDefaultValueWhenNoOverrides(): void
+    public function testRenderReturnsEmptyMarkupWhenNoOverrides(): void
     {
-        $result = $this->block->render('Default Name', []);
+        $result = $this->block->render([]);
 
-        $this->assertSame('Default Name', $result);
+        $this->assertSame('', $result);
     }
 
     public function testRenderContainsDataScopehintPopoverAttribute(): void
@@ -45,12 +45,12 @@ class CellPopoverTest extends TestCase
             ],
         ];
 
-        $result = $this->block->render('Default Name', $overrides);
+        $result = $this->block->render($overrides);
 
         $this->assertStringContainsString('data-scopehint-popover="1"', $result);
     }
 
-    public function testRenderContainsDefaultValue(): void
+    public function testRenderDoesNotDuplicateDefaultValue(): void
     {
         $overrides = [
             2 => [
@@ -61,9 +61,9 @@ class CellPopoverTest extends TestCase
             ],
         ];
 
-        $result = $this->block->render('My Default', $overrides);
+        $result = $this->block->render($overrides);
 
-        $this->assertStringContainsString('My Default', $result);
+        $this->assertStringNotContainsString('My Default', $result);
     }
 
     public function testRenderContainsStoreName(): void
@@ -77,7 +77,7 @@ class CellPopoverTest extends TestCase
             ],
         ];
 
-        $result = $this->block->render('Default Value', $overrides);
+        $result = $this->block->render($overrides);
 
         $this->assertStringContainsString('French Store', $result);
     }
@@ -99,33 +99,10 @@ class CellPopoverTest extends TestCase
             ],
         ];
 
-        $result = $this->block->render('Default', $overrides);
+        $result = $this->block->render($overrides);
 
         $this->assertStringContainsString('class="scopehint-badge"', $result);
         $this->assertStringContainsString('>2<', $result);
-    }
-
-    public function testRenderCallsEscapeHtmlOnDefaultValue(): void
-    {
-        $overrides = [
-            2 => [
-                'displayValue' => 'Safe',
-                'storeName'    => 'Store',
-                'storeCode'    => 's',
-                'websiteCode'  => 'base',
-            ],
-        ];
-
-        // Verify escapeHtml is called with the default value.
-        $this->escaper->expects($this->atLeastOnce())
-            ->method('escapeHtml')
-            ->with($this->logicalOr(
-                $this->equalTo('<script>alert(1)</script>'),
-                $this->anything()
-            ))
-            ->willReturnArgument(0);
-
-        $this->block->render('<script>alert(1)</script>', $overrides);
     }
 
     public function testRenderCallsEscapeHtmlOnStoreName(): void
@@ -144,7 +121,7 @@ class CellPopoverTest extends TestCase
             ->method('escapeHtml')
             ->willReturnArgument(0);
 
-        $result = $this->block->render('Default', $overrides);
+        $result = $this->block->render($overrides);
 
         $this->assertStringContainsString('data-scopehint-popover="1"', $result);
     }

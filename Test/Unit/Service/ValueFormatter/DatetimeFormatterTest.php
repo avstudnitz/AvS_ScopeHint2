@@ -66,14 +66,47 @@ class DatetimeFormatterTest extends TestCase
     public function testFormatReturnsFormattedDate(): void
     {
         $field = $this->createMock(Field::class);
+        $field->method('getType')->willReturn('date');
         $dateObj = new \DateTime('2024-01-15 10:00:00');
 
         $this->timezone->method('date')->willReturn($dateObj);
-        $this->timezone->method('formatDate')->with($dateObj)->willReturn('Jan 15, 2024');
+        $this->timezone->method('formatDate')
+            ->with($dateObj, \IntlDateFormatter::SHORT, false)
+            ->willReturn('Jan 15, 2024');
 
         $result = $this->formatter->format('2024-01-15 10:00:00', $field);
 
         self::assertSame('Jan 15, 2024', $result);
+    }
+
+    public function testFormatDatetimeIncludesTime(): void
+    {
+        $field = $this->createMock(Field::class);
+        $field->method('getType')->willReturn('datetime');
+        $dateObj = new \DateTime('2024-01-15 10:00:00');
+
+        $this->timezone->method('date')->willReturn($dateObj);
+        $this->timezone->expects(self::once())
+            ->method('formatDate')
+            ->with($dateObj, \IntlDateFormatter::SHORT, true)
+            ->willReturn('1/15/24, 10:00 AM');
+
+        self::assertSame('1/15/24, 10:00 AM', $this->formatter->format('2024-01-15 10:00:00', $field));
+    }
+
+    public function testFormatTimeOmitsDate(): void
+    {
+        $field = $this->createMock(Field::class);
+        $field->method('getType')->willReturn('time');
+        $dateObj = new \DateTime('2024-01-15 10:00:00');
+
+        $this->timezone->method('date')->willReturn($dateObj);
+        $this->timezone->expects(self::once())
+            ->method('formatDateTime')
+            ->with($dateObj, \IntlDateFormatter::NONE, \IntlDateFormatter::SHORT)
+            ->willReturn('10:00 AM');
+
+        self::assertSame('10:00 AM', $this->formatter->format('10:00:00', $field));
     }
 
     public function testFormatEmptyValueReturnsEmptyString(): void

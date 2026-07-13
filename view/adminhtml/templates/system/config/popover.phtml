@@ -53,7 +53,7 @@ $triggerLabel  = $block->escapeHtmlAttr((string) __('%1 scope overrides — clic
                         <li data-store-code="<?= $block->escapeHtmlAttr($override->getScopeCode()) ?>">
                             <?= $block->escapeHtml($override->getScopeName()) ?>
                             (<code><?= $block->escapeHtml($override->getScopeCode()) ?></code>):
-                            &ldquo;<?= $block->escapeHtml($override->getDisplayValue()) ?>&rdquo;
+                            &ldquo;<?= /* @noEscape */ $override->getDisplayValue() ?>&rdquo;
                         </li>
                         <?php endforeach; ?>
                     </ul>

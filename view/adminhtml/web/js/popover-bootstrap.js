@@ -11,7 +11,7 @@ define(['jquery', 'AvS_ScopeHint/js/popover'], function ($, popoverFactory) {
     'use strict';
 
     function bindAll(root) {
-        $(root || document).find('[data-scopehint-popover]').each(function () {
+        $(root || document).find('[data-scopehint-popover]').addBack('[data-scopehint-popover]').each(function () {
             if (this.dataset.scopehintBound === '1') {
                 return;
             }
@@ -26,6 +26,18 @@ define(['jquery', 'AvS_ScopeHint/js/popover'], function ($, popoverFactory) {
 
     $(function () {
         setTimeout(bindAll, 0);
+
+        if (window.MutationObserver && document.body) {
+            new MutationObserver(function (records) {
+                records.forEach(function (record) {
+                    Array.prototype.forEach.call(record.addedNodes, function (node) {
+                        if (node.nodeType === 1) {
+                            bindAll(node);
+                        }
+                    });
+                });
+            }).observe(document.body, { childList: true, subtree: true });
+        }
     });
 
     return bindAll;

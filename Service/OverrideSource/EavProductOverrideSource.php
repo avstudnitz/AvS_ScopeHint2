@@ -189,7 +189,7 @@ class EavProductOverrideSource implements OverrideSourceInterface
     }
 
     /**
-     * @param \Magento\Catalog\Api\Data\ProductInterface $product
+     * @param \Magento\Catalog\Model\Product $product
      * @param mixed $value
      */
     private function resolveDisplayValue($product, string $attributeCode, $value): string
@@ -198,24 +198,20 @@ class EavProductOverrideSource implements OverrideSourceInterface
             return $this->escaper->escapeHtml((string) __('(complex value)'));
         }
 
-        $valueAsString = null;
-
-        try {
-            $valueAsString = (string) $value;
-        } catch (\Throwable $ex) {
+        if (!is_scalar($value) && !$value instanceof \Stringable) {
             $encoded = json_encode($value);
-            $valueAsString = $encoded !== false ? $encoded : null;
-        }
-
-        if ($valueAsString === null) {
-            return '';
+            $valueAsString = $encoded !== false ? $encoded : '';
+        } else {
+            $valueAsString = (string) $value;
         }
 
         // Attempt label resolution for select attributes via the product resource
         if ($valueAsString !== '') {
             try {
                 /** @var \Magento\Catalog\Model\Product $product */
-                $attribute = $product->getResource()->getAttribute($attributeCode);
+                /** @var \Magento\Catalog\Model\ResourceModel\Product $productResource */
+                $productResource = $product->getResource();
+                $attribute = $productResource->getAttribute($attributeCode);
                 if ($attribute && $attribute->usesSource()) {
                     $optionText = $attribute->getSource()->getOptionText($valueAsString);
                     if ($optionText !== false && $optionText !== null) {
@@ -231,7 +227,7 @@ class EavProductOverrideSource implements OverrideSourceInterface
     }
 
     /**
-     * @return \Magento\Catalog\Api\Data\ProductInterface|null
+     * @return \Magento\Catalog\Model\Product|null
      */
     private function loadProduct(int $productId, int $storeId)
     {

@@ -9,6 +9,8 @@ use AvS\ScopeHint\Service\OverrideSource\EavCategoryOverrideSource;
 use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Magento\Catalog\Api\Data\CategoryInterface;
 use Magento\Eav\Model\Config as EavConfig;
+use Magento\Catalog\Model\ResourceModel\Eav\Attribute as CatalogAttribute;
+use Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Escaper;
 use Magento\Framework\Exception\NoSuchEntityException;
@@ -90,6 +92,7 @@ class EavCategoryOverrideSourceTest extends TestCase
 
     public function testSupportsReturnsFalseWhenGlobalScopeIsTrue(): void
     {
+        $this->stubAttribute(ScopedAttributeInterface::SCOPE_GLOBAL);
         self::assertFalse(
             $this->source->supports('category', ['code' => 'name', 'globalScope' => true])
         );
@@ -97,11 +100,13 @@ class EavCategoryOverrideSourceTest extends TestCase
 
     public function testSupportsReturnsTrueForValidCategoryField(): void
     {
+        $this->stubAttribute(ScopedAttributeInterface::SCOPE_STORE);
         self::assertTrue($this->source->supports('category', ['code' => 'name']));
     }
 
     public function testSupportsReturnsTrueWhenGlobalScopeIsFalsy(): void
     {
+        $this->stubAttribute(ScopedAttributeInterface::SCOPE_STORE);
         self::assertTrue(
             $this->source->supports('category', ['code' => 'description', 'globalScope' => false])
         );
@@ -248,5 +253,13 @@ class EavCategoryOverrideSourceTest extends TestCase
         $website->method('getCode')->willReturn($code);
 
         return $website;
+    }
+
+    private function stubAttribute(int $scope): void
+    {
+        $attribute = $this->createMock(CatalogAttribute::class);
+        $attribute->method('getAttributeId')->willReturn(42);
+        $attribute->method('getIsGlobal')->willReturn($scope);
+        $this->eavConfig->method('getAttribute')->willReturn($attribute);
     }
 }

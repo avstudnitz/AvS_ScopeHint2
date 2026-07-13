@@ -55,7 +55,7 @@ $triggerLabel = $block->escapeHtmlAttr((string) __('%1 scope overrides — click
                                 <span class="scopehint-store-name"><?= $block->escapeHtml($override->getScopeName()) ?></span>
                                 <code class="scopehint-store-code"><?= $block->escapeHtml($override->getScopeCode()) ?></code>
                             </div>
-                            <div class="scopehint-store-value"><?= $block->escapeHtml($override->getDisplayValue()) ?></div>
+                            <div class="scopehint-store-value"><?= /* @noEscape */ $override->getDisplayValue() ?></div>
                         </li>
                         <?php endforeach; ?>
                     </ul>

@@ -10,17 +10,18 @@ use AvS\ScopeHint\Service\ScopeOverrideDetector;
 use AvS\ScopeHint\Service\ValueFormatter\Pool;
 use AvS\ScopeHint\Service\ValueFormatter\ValueFormatterInterface;
 use Magento\Config\Model\Config\Structure\Element\Field;
+use Magento\Config\Model\ResourceModel\Config\Data\Collection;
+use Magento\Config\Model\ResourceModel\Config\Data\CollectionFactory;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Escaper;
-use Magento\Framework\ObjectManagerInterface;
+use Magento\Framework\DataObject;
 use Magento\Store\Api\Data\StoreInterface;
 use Magento\Store\Api\Data\WebsiteInterface;
 use Magento\Store\Api\StoreRepositoryInterface;
 use Magento\Store\Api\WebsiteRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\LoggerInterface;
 
 class ScopeOverrideDetectorTest extends TestCase
 {
@@ -41,6 +42,9 @@ class ScopeOverrideDetectorTest extends TestCase
 
     /** @var ScopeOverrideDetector */
     private $detector;
+
+    /** @var array<int, DataObject> */
+    private $configRecords = [];
 
     protected function setUp(): void
     {
@@ -64,6 +68,13 @@ class ScopeOverrideDetectorTest extends TestCase
         });
         $pool = $this->createMock(Pool::class);
         $pool->method('resolve')->willReturn($defaultFormatter);
+        $collection = $this->createMock(Collection::class);
+        $collection->method('addFieldToFilter')->willReturnSelf();
+        $collection->method('getIterator')->willReturnCallback(function () {
+            return new \ArrayIterator($this->configRecords);
+        });
+        $collectionFactory = $this->createMock(CollectionFactory::class);
+        $collectionFactory->method('create')->willReturn($collection);
 
         $this->detector = new ScopeOverrideDetector(
             $this->scopeConfig,
@@ -71,11 +82,8 @@ class ScopeOverrideDetectorTest extends TestCase
             $this->storeRepository,
             $this->request,
             $this->escaper,
-            new OptionLabelResolver(
-                $this->createMock(ObjectManagerInterface::class),
-                $this->createMock(LoggerInterface::class)
-            ),
-            $pool
+            $pool,
+            $collectionFactory
         );
     }
 
@@ -94,6 +102,7 @@ class ScopeOverrideDetectorTest extends TestCase
 
     public function testDetectsWebsiteOverride(): void
     {
+        $this->stubExplicitValue('websites', 2, 'de_DE');
         $this->stubRequestParams(null, null);
         $website = $this->createWebsite(2, 'main_website', 'Main Website');
         $this->websiteRepository->method('getList')->willReturn([$website]);
@@ -118,6 +127,7 @@ class ScopeOverrideDetectorTest extends TestCase
 
     public function testDetectsStoreOverrideWithinSameWebsite(): void
     {
+        $this->stubExplicitValue('stores', 5, 'processing');
         $this->stubRequestParams(null, null);
         $website = $this->createWebsite(2, 'main_website', 'Main Website');
         $store = $this->createStore(5, 'us_en', 'US Store', 2);
@@ -143,7 +153,9 @@ class ScopeOverrideDetectorTest extends TestCase
 
     public function testSkipsStoresOutsideCurrentWebsiteScope(): void
     {
-        $this->stubRequestParams('2', null);
+        $this->stubRequestParams('main_website', null);
+        $this->stubExplicitValue('stores', 5, 'fr_FR');
+        $this->stubExplicitValue('stores', 6, 'de_DE');
         $matchingStore = $this->createStore(5, 'us_en', 'US Store', 2);
         $otherStore = $this->createStore(6, 'de_de', 'DE Store', 3);
         $website = $this->createWebsite(2, 'main_website', 'Main Website');
@@ -154,10 +166,9 @@ class ScopeOverrideDetectorTest extends TestCase
         $this->scopeConfig
             ->method('getValue')
             ->willReturnMap([
-                ['general/locale/code', 'website', '2', 'en_US'],
-                ['general/locale/code', 'stores', 5, 'fr_FR'],
-                ['general/locale/code', 'stores', 6, 'de_DE'],
+                ['general/locale/code', 'website', 2, 'en_US'],
             ]);
+        $this->websiteRepository->method('get')->with('main_website')->willReturn($website);
 
         $result = $this->detector->getOverrides('general/locale/code');
 
@@ -167,7 +178,7 @@ class ScopeOverrideDetectorTest extends TestCase
 
     public function testFiltersOutCurrentStore(): void
     {
-        $this->stubRequestParams(null, '5');
+        $this->stubRequestParams(null, 'us_en');
         $store = $this->createStore(5, 'us_en', 'US Store', 2);
         $website = $this->createWebsite(2, 'main_website', 'Main Website');
         $this->websiteRepository->method('getList')->willReturn([]);
@@ -182,6 +193,7 @@ class ScopeOverrideDetectorTest extends TestCase
 
     public function testArrayValuesAreFlaggedAsComplex(): void
     {
+        $this->stubExplicitValue('websites', 2, ['b' => 2]);
         $this->stubRequestParams(null, null);
         $website = $this->createWebsite(2, 'main_website', 'Main Website');
         $this->websiteRepository->method('getList')->willReturn([$website]);
@@ -203,6 +215,8 @@ class ScopeOverrideDetectorTest extends TestCase
 
     public function testGroupingByWebsite(): void
     {
+        $this->stubExplicitValue('stores', 5, 'b');
+        $this->stubExplicitValue('stores', 6, 'c');
         $this->stubRequestParams(null, null);
         $website2 = $this->createWebsite(2, 'main_website', 'Main Website');
         $store5 = $this->createStore(5, 'us_en', 'US Store', 2);
@@ -240,6 +254,16 @@ class ScopeOverrideDetectorTest extends TestCase
                 }
                 return null;
             });
+    }
+
+    /** @param mixed $value */
+    private function stubExplicitValue(string $scope, int $scopeId, $value): void
+    {
+        $this->configRecords[] = new DataObject([
+            'scope' => $scope,
+            'scope_id' => $scopeId,
+            'value' => $value,
+        ]);
     }
 
     private function createWebsite(int $id, string $code, string $name): WebsiteInterface

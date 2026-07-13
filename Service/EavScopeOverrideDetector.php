@@ -178,17 +178,11 @@ class EavScopeOverrideDetector
             return $this->escaper->escapeHtml((string) __('(complex value)'));
         }
 
-        $valueAsString = null;
-
-        try {
-            $valueAsString = (string) $value;
-        } catch (\Throwable $ex) {
+        if (!is_scalar($value) && !$value instanceof \Stringable) {
             $encoded = json_encode($value);
-            $valueAsString = $encoded !== false ? $encoded : null;
-        }
-
-        if ($valueAsString === null) {
-            return '';
+            $valueAsString = $encoded !== false ? $encoded : '';
+        } else {
+            $valueAsString = (string) $value;
         }
 
         if ($attribute->getFrontendInput() === 'select' && $valueAsString !== '') {
@@ -206,7 +200,7 @@ class EavScopeOverrideDetector
     }
 
     /**
-     * @return \Magento\Catalog\Api\Data\CategoryInterface|null
+     * @return \Magento\Catalog\Model\Category|null
      */
     private function loadCategory(int $categoryId, int $storeId)
     {

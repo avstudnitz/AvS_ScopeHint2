@@ -15,6 +15,7 @@ define(['jquery'], function ($) {
         this.$close   = this.$root.find('.scopehint-close').first();
 
         this._outsideHandler  = null;
+        this._keyHandler      = null;
         this._portaled        = false;
         this._panelOrigParent = null;
         this._panelOrigNext   = null;
@@ -46,6 +47,10 @@ define(['jquery'], function ($) {
             if (e.key === 'Escape') {
                 self._close();
             }
+        });
+
+        this.$panel.on('click', function (e) {
+            e.stopPropagation();
         });
 
         if (this.$search.length) {
@@ -98,6 +103,7 @@ define(['jquery'], function ($) {
         }
 
         this._registerOutsideClick();
+        this._registerEscapeKey();
     };
 
     Popover.prototype._close = function () {
@@ -108,6 +114,7 @@ define(['jquery'], function ($) {
         }
         this.$trigger.trigger('focus');
         this._unregisterOutsideClick();
+        this._unregisterEscapeKey();
     };
 
     Popover.prototype._portalPanel = function () {
@@ -176,6 +183,23 @@ define(['jquery'], function ($) {
         if (this._outsideHandler) {
             document.removeEventListener('click', this._outsideHandler, true);
             this._outsideHandler = null;
+        }
+    };
+
+    Popover.prototype._registerEscapeKey = function () {
+        var self = this;
+        this._keyHandler = function (e) {
+            if (e.key === 'Escape') {
+                self._close();
+            }
+        };
+        document.addEventListener('keydown', this._keyHandler, true);
+    };
+
+    Popover.prototype._unregisterEscapeKey = function () {
+        if (this._keyHandler) {
+            document.removeEventListener('keydown', this._keyHandler, true);
+            this._keyHandler = null;
         }
     };
 

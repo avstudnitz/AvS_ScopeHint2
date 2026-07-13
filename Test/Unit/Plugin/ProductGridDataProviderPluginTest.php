@@ -103,7 +103,11 @@ class ProductGridDataProviderPluginTest extends TestCase
 
         $output = $this->plugin->afterGetData($this->subject, $result);
 
-        $this->assertStringContainsString('data-scopehint-popover', $output['items'][0]['name']);
+        $this->assertSame('Default', $output['items'][0]['name']);
+        $this->assertStringContainsString(
+            'data-scopehint-popover',
+            $output['items'][0]['__scopehint_name']
+        );
     }
 
     public function testAfterGetDataSkipsColumnNotPresentInItem(): void

@@ -39,7 +39,7 @@ class EditorFormatter implements ValueFormatterInterface
             return false;
         }
 
-        return $frontendModel !== '' && stripos($frontendModel, 'Pagebuilder') !== false;
+        return $frontendModel !== '' && stripos((string) $frontendModel, 'Pagebuilder') !== false;
     }
 
     /**

@@ -42,7 +42,20 @@ class DatetimeFormatter implements ValueFormatterInterface
 
         try {
             $date = $this->timezone->date(new \DateTime((string) $value));
-            $formatted = $this->timezone->formatDate($date);
+
+            if ($field->getType() === 'time') {
+                $formatted = $this->timezone->formatDateTime(
+                    $date,
+                    \IntlDateFormatter::NONE,
+                    \IntlDateFormatter::SHORT
+                );
+            } else {
+                $formatted = $this->timezone->formatDate(
+                    $date,
+                    \IntlDateFormatter::SHORT,
+                    $field->getType() === 'datetime'
+                );
+            }
 
             return $this->escaper->escapeHtml($formatted);
         } catch (\Throwable $e) {

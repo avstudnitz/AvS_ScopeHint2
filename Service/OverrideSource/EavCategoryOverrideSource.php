@@ -11,6 +11,7 @@ use AvS\ScopeHint\Model\Data\OverrideResult;
 use AvS\ScopeHint\Model\Data\ScopeOverride;
 use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Magento\Eav\Model\Config as EavConfig;
+use Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Escaper;
 use Magento\Framework\Exception\NoSuchEntityException;
@@ -100,11 +101,20 @@ class EavCategoryOverrideSource implements OverrideSourceInterface
             return false;
         }
 
-        if (!empty($fieldMeta['globalScope'])) {
+        try {
+            $attribute = $this->eavConfig->getAttribute('catalog_category', (string) $fieldMeta['code']);
+            if (!$attribute || !$attribute->getAttributeId()) {
+                return false;
+            }
+
+            $isGlobal = method_exists($attribute, 'getIsGlobal')
+                ? (int) $attribute->getIsGlobal()
+                : (int) $attribute->getData('is_global');
+
+            return $isGlobal !== ScopedAttributeInterface::SCOPE_GLOBAL;
+        } catch (\Throwable $e) {
             return false;
         }
-
-        return true;
     }
 
     /**
@@ -198,17 +208,11 @@ class EavCategoryOverrideSource implements OverrideSourceInterface
             return $this->escaper->escapeHtml((string) __('(complex value)'));
         }
 
-        $valueAsString = null;
-
-        try {
-            $valueAsString = (string) $value;
-        } catch (\Throwable $ex) {
+        if (!is_scalar($value) && !$value instanceof \Stringable) {
             $encoded = json_encode($value);
-            $valueAsString = $encoded !== false ? $encoded : null;
-        }
-
-        if ($valueAsString === null) {
-            return '';
+            $valueAsString = $encoded !== false ? $encoded : '';
+        } else {
+            $valueAsString = (string) $value;
         }
 
         if ($valueAsString !== '') {
@@ -229,7 +233,7 @@ class EavCategoryOverrideSource implements OverrideSourceInterface
     }
 
     /**
-     * @return \Magento\Catalog\Api\Data\CategoryInterface|null
+     * @return \Magento\Catalog\Model\Category|null
      */
     private function loadCategory(int $categoryId, int $storeId)
     {

@@ -1,8 +1,13 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!--
-    The PR-7 approach enriches existing attribute columns inline rather than
-    adding a dedicated column. This file is retained as an empty skeleton so
-    Magento's UI component merge does not error on a missing file reference.
--->
-<listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+<?xml version="1.0"?>
+<listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+    <columns name="product_columns">
+        <!-- Name is declared statically by Magento, so it never passes through
+             Catalog ColumnFactory with the dynamically-added EAV columns. -->
+        <column name="name">
+            <settings>
+                <bodyTmpl>AvS_ScopeHint/ui/grid/cells/scopehint</bodyTmpl>
+            </settings>
+        </column>
+    </columns>
 </listing>

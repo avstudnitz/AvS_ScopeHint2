@@ -8,6 +8,7 @@ use AvS\ScopeHint\Block\Adminhtml\Eav\Popover;
 use AvS\ScopeHint\Service\OverrideSourcePool;
 use Magento\Catalog\Model\Category\DataProvider;
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\Escaper;
 use Magento\Framework\Stdlib\ArrayManager;
 use Magento\Framework\View\LayoutInterface;
 
@@ -44,16 +45,21 @@ class CategoryDataProviderPlugin
     /** @var ArrayManager */
     private $arrayManager;
 
+    /** @var Escaper */
+    private $escaper;
+
     public function __construct(
         OverrideSourcePool $overrideSourcePool,
         LayoutInterface $layout,
         ScopeConfigInterface $scopeConfig,
-        ArrayManager $arrayManager
+        ArrayManager $arrayManager,
+        Escaper $escaper
     ) {
         $this->overrideSourcePool = $overrideSourcePool;
         $this->layout = $layout;
         $this->scopeConfig = $scopeConfig;
         $this->arrayManager = $arrayManager;
+        $this->escaper = $escaper;
     }
 
     /**
@@ -82,10 +88,12 @@ class CategoryDataProviderPlugin
             }
 
             if ($isLegacy) {
-                $lines = [];
+                $existingDescription = (string) ($fieldMeta['tooltip']['description'] ?? '');
+                $lines = $existingDescription !== '' ? [$existingDescription] : [];
 
                 foreach ($overrides->getOverrides() as $override) {
-                    $lines[] = $override->getScopeName() . ': ' . $override->getDisplayValue();
+                    $lines[] = $this->escaper->escapeHtml($override->getScopeName())
+                        . ': ' . $override->getDisplayValue();
                 }
 
                 $result = $this->arrayManager->merge(
@@ -106,7 +114,7 @@ class CategoryDataProviderPlugin
                 $result = $this->arrayManager->merge(
                     $attributePath . '/arguments/data/config',
                     $result,
-                    ['additionalInfo' => $popoverHtml]
+                    ['additionalInfo' => (string) ($fieldMeta['additionalInfo'] ?? '') . $popoverHtml]
                 );
             }
         }
@@ -134,6 +142,8 @@ class CategoryDataProviderPlugin
 
                 // Derive the path that arrayManager->merge() expects.
                 $path = $fieldsetName . '/children/' . $fieldName;
+
+                $fieldMeta['code'] = $fieldName;
 
                 yield $path => $fieldMeta;
             }

@@ -62,7 +62,7 @@ class Popover extends Template
     public function getFieldHtmlId(): string
     {
         if ($this->fieldHtmlId === null) {
-            $this->fieldHtmlId = 'scopehint-eav-panel-' . substr(md5((string) mt_rand()), 0, 8);
+            $this->fieldHtmlId = 'scopehint-eav-panel-' . bin2hex(random_bytes(4));
         }
         return $this->fieldHtmlId;
     }

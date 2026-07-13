@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace AvS\ScopeHint\Plugin;
 
 use AvS\ScopeHint\Api\Data\ScopeOverrideInterface;
-use AvS\ScopeHint\Block\Adminhtml\System\Config\Popover;
 use AvS\ScopeHint\Service\ScopeOverrideDetectorInterface;
 use Magento\Config\Model\Config\Structure\Element\Field as Subject;
 use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Framework\View\LayoutInterface;
 
 class ConfigFieldPlugin
 {
@@ -22,20 +20,15 @@ class ConfigFieldPlugin
     /** @var ScopeOverrideDetectorInterface */
     private $detector;
 
-    /** @var LayoutInterface */
-    private $layout;
-
     /** @var bool */
     private $isProcessing = false;
 
     public function __construct(
         ScopeConfigInterface $scopeConfig,
-        ScopeOverrideDetectorInterface $detector,
-        LayoutInterface $layout
+        ScopeOverrideDetectorInterface $detector
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->detector    = $detector;
-        $this->layout      = $layout;
     }
 
     /**
@@ -45,6 +38,10 @@ class ConfigFieldPlugin
      */
     public function afterGetTooltip(Subject $subject, $result)
     {
+        if (!$this->scopeConfig->isSetFlag(self::CONFIG_LEGACY_TOOLTIP)) {
+            return $result;
+        }
+
         $path      = $this->getPath($subject);
         $overrides = $this->detector->getOverrides($path, $subject);
 
@@ -52,23 +49,12 @@ class ConfigFieldPlugin
             return $result;
         }
 
-        if ($this->scopeConfig->isSetFlag(self::CONFIG_LEGACY_TOOLTIP)) {
-            $lines = $result === '' || $result === null ? [] : [$result];
-            foreach ($overrides->getOverrides() as $override) {
-                $lines[] = $this->renderLine($override);
-            }
-            return implode('<br />', $lines);
+        $lines = $result === '' || $result === null ? [] : [$result];
+        foreach ($overrides->getOverrides() as $override) {
+            $lines[] = $this->renderLine($override);
         }
 
-        /** @var Popover $block */
-        $block = $this->layout->createBlock(Popover::class);
-        $block->setOverrides($overrides);
-        $popoverHtml = $block->toHtml();
-
-        if ($result === '' || $result === null) {
-            return $popoverHtml;
-        }
-        return $result . $popoverHtml;
+        return implode('<br />', $lines);
     }
 
     /**

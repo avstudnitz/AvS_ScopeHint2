@@ -12,17 +12,14 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
 /**
  * Enriches product grid cells with inline scope-override popovers.
  *
- * afterGetData: for each attribute column that has per-store overrides, replaces
- * the plain cell value with HTML that includes the default value and a pill button
- * that opens a flat per-store list popover.
+ * afterGetData adds escaped popover markup in a companion data key while
+ * preserving the original field value for native sorting, filtering and label
+ * formatting.
  *
- * bodyTmpl is flipped to ui/grid/cells/html by CatalogColumnFactoryPlugin, which
- * plugs ColumnFactory::create() — the correct hook because EAV columns are added
- * after getMeta() runs (Catalog\Ui\Component\Listing\Columns::prepare()).
+ * A dedicated cell template is selected by CatalogColumnFactoryPlugin for
+ * dynamic EAV columns and by product_listing.xml for Magento's static Name
+ * column. It text-binds native values and HTML-binds only this trusted markup.
  *
- * Trade-off: enriched cells contain HTML strings, so Magento's native grid
- * sort/filter operates on the HTML string for rows that have overrides. Plain
- * rows (no overrides) are unaffected.
  */
 class ProductGridDataProviderPlugin
 {
@@ -97,8 +94,7 @@ class ProductGridDataProviderPlugin
                     continue;
                 }
 
-                $defaultValue = (string) ($item[$attributeCode] ?? '');
-                $item[$attributeCode] = $this->cellPopover->render($defaultValue, $storeOverrides);
+                $item['__scopehint_' . $attributeCode] = $this->cellPopover->render($storeOverrides);
             }
         }
 

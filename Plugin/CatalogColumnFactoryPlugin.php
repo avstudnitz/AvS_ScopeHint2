@@ -9,9 +9,10 @@ use Magento\Eav\Model\Entity\Attribute\AbstractAttribute;
 use Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface;
 
 /**
- * Flip bodyTmpl to ui/grid/cells/html for EAV product attribute columns whose
- * data is store-scoped and not image/media — so ProductGridDataProviderPlugin's
- * cell HTML injection renders rather than displaying as escaped text.
+ * Use a dedicated cell template for scoped EAV columns. The template keeps the
+ * original value in Knockout's text binding and renders only ScopeHint's
+ * escaped companion markup as HTML, avoiding stored XSS and preserving the
+ * column component's select/date label formatting.
  *
  * Plugged on ColumnFactory because EAV columns are added after getMeta() runs
  * (Catalog\Ui\Component\Listing\Columns::prepare() at column-prepare time).
@@ -57,7 +58,10 @@ class CatalogColumnFactoryPlugin
         }
 
         $existing = (array) $column->getData('config');
-        $column->setData('config', array_replace($existing, ['bodyTmpl' => 'ui/grid/cells/html']));
+        $column->setData(
+            'config',
+            array_replace($existing, ['bodyTmpl' => 'AvS_ScopeHint/ui/grid/cells/scopehint'])
+        );
 
         return $column;
     }

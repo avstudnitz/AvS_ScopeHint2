@@ -10,8 +10,8 @@ Facts
 
 Description
 -----------
-Whenever a configuration setting is overwritten by a lower level website or store view, an icon is displayed.
-On Mouseover, a list of all stores / websites which overwrite the setting is shown with the respective values.
+Whenever a configuration setting is overwritten by a lower-level website or store view, an icon is displayed.
+Clicking the icon opens an accessible popover grouped by website with the overridden values.
 See the screenshot to get an impression of what the module does:
 
 ![Screenshot](scopehint2-screenshot.png?raw=true "ScopeHint for Magento 2")
@@ -22,7 +22,7 @@ Stores -> Settings -> Configuration -> Advanced -> Developer -> Debug -> `Displa
 
 Requirements
 ------------
-- PHP 7.4, 8.1, 8.2, or 8.3
+- PHP 7.4 or 8.1 through 8.5
 
 Compatibility
 -------------

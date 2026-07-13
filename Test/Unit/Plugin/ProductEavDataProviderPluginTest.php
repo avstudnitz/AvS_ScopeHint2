@@ -12,6 +12,7 @@ use AvS\ScopeHint\Service\OverrideSourcePool;
 use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\Eav;
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\Escaper;
 use Magento\Framework\Registry;
 use Magento\Framework\View\LayoutInterface;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -31,6 +32,9 @@ class ProductEavDataProviderPluginTest extends TestCase
     /** @var Registry&MockObject */
     private $registry;
 
+    /** @var Escaper&MockObject */
+    private $escaper;
+
     /** @var Eav&MockObject */
     private $subject;
 
@@ -43,13 +47,18 @@ class ProductEavDataProviderPluginTest extends TestCase
         $this->layout      = $this->createMock(LayoutInterface::class);
         $this->scopeConfig = $this->createMock(ScopeConfigInterface::class);
         $this->registry    = $this->createMock(Registry::class);
+        $this->escaper     = $this->createMock(Escaper::class);
+        $this->escaper->method('escapeHtml')->willReturnCallback(static function ($value) {
+            return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+        });
         $this->subject     = $this->createMock(Eav::class);
 
         $this->plugin = new ProductEavDataProviderPlugin(
             $this->pool,
             $this->layout,
             $this->scopeConfig,
-            $this->registry
+            $this->registry,
+            $this->escaper
         );
     }
 

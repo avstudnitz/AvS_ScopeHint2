@@ -10,6 +10,7 @@ use AvS\ScopeHint\Model\Data\OverrideResult;
 use AvS\ScopeHint\Model\Data\ScopeOverride;
 use AvS\ScopeHint\Service\ValueFormatter\Pool;
 use Magento\Config\Model\Config\Structure\Element\Field as Subject;
+use Magento\Config\Model\ResourceModel\Config\Data\CollectionFactory;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Escaper;
@@ -35,11 +36,11 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
     /** @var Escaper */
     private $escaper;
 
-    /** @var OptionLabelResolver */
-    private $labelResolver;
-
     /** @var Pool */
     private $formatterPool;
+
+    /** @var CollectionFactory */
+    private $configCollectionFactory;
 
     public function __construct(
         ScopeConfigInterface $scopeConfig,
@@ -47,33 +48,51 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
         StoreRepositoryInterface $storeRepository,
         RequestInterface $request,
         Escaper $escaper,
-        OptionLabelResolver $labelResolver,
-        Pool $formatterPool
+        Pool $formatterPool,
+        CollectionFactory $configCollectionFactory
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->websiteRepository = $websiteRepository;
         $this->storeRepository = $storeRepository;
         $this->request = $request;
         $this->escaper = $escaper;
-        $this->labelResolver = $labelResolver;
         $this->formatterPool = $formatterPool;
+        $this->configCollectionFactory = $configCollectionFactory;
     }
 
     public function getOverrides(string $path, ?Subject $field = null): OverrideResultInterface
     {
-        $currentWebsiteId = $this->getWebsiteParam();
-        $currentStoreId = $this->getStoreParam();
-        $currentValue = $this->getCurrentValue($path, $currentWebsiteId);
+        $currentWebsiteCode = $this->getWebsiteParam();
+        $currentStoreCode = $this->getStoreParam();
+
+        // A store view has no lower configuration scope.
+        if ($currentStoreCode !== null) {
+            return new OverrideResult([]);
+        }
+
+        $currentWebsiteId = null;
+        if ($currentWebsiteCode !== null) {
+            try {
+                $currentWebsiteId = (int) $this->websiteRepository->get($currentWebsiteCode)->getId();
+            } catch (\Throwable $e) {
+                return new OverrideResult([]);
+            }
+        }
+
+        $currentValue = $currentWebsiteId === null
+            ? $this->scopeConfig->getValue($path)
+            : $this->scopeConfig->getValue($path, ScopeInterface::SCOPE_WEBSITE, $currentWebsiteId);
+        $explicitValues = $this->getExplicitValues($path);
 
         $overrides = [];
 
-        if ($currentWebsiteId === null && $currentStoreId === null) {
+        if ($currentWebsiteId === null) {
             foreach ($this->websiteRepository->getList() as $website) {
-                $scopeValue = $this->scopeConfig->getValue(
-                    $path,
-                    ScopeOverrideInterface::SCOPE_TYPE_WEBSITES,
-                    $website->getId()
-                );
+                $websiteId = (int) $website->getId();
+                if (!array_key_exists($websiteId, $explicitValues[ScopeOverrideInterface::SCOPE_TYPE_WEBSITES])) {
+                    continue;
+                }
+                $scopeValue = $explicitValues[ScopeOverrideInterface::SCOPE_TYPE_WEBSITES][$websiteId];
                 if ($this->valuesDiffer($currentValue, $scopeValue)) {
                     $overrides[] = new ScopeOverride(
                         ScopeOverrideInterface::SCOPE_TYPE_WEBSITES,
@@ -89,23 +108,27 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
         }
 
         foreach ($this->storeRepository->getList() as $store) {
-            if ($currentStoreId !== null && (string) $store->getId() === $currentStoreId) {
+            $storeId = (int) $store->getId();
+            $websiteId = (int) $store->getWebsiteId();
+
+            if ($currentWebsiteId !== null && $websiteId !== $currentWebsiteId) {
                 continue;
             }
-            if ($currentWebsiteId !== null && (string) $store->getWebsiteId() !== $currentWebsiteId) {
+            if (!array_key_exists($storeId, $explicitValues[ScopeOverrideInterface::SCOPE_TYPE_STORES])) {
                 continue;
             }
-            $scopeValue = $this->scopeConfig->getValue(
-                $path,
-                ScopeOverrideInterface::SCOPE_TYPE_STORES,
-                $store->getId()
-            );
-            if ($this->valuesDiffer($currentValue, $scopeValue)) {
+
+            $scopeValue = $explicitValues[ScopeOverrideInterface::SCOPE_TYPE_STORES][$storeId];
+            $parentValue = $currentWebsiteId !== null
+                ? $currentValue
+                : $this->scopeConfig->getValue($path, ScopeInterface::SCOPE_WEBSITE, $websiteId);
+
+            if ($this->valuesDiffer($parentValue, $scopeValue)) {
                 $overrides[] = new ScopeOverride(
                     ScopeOverrideInterface::SCOPE_TYPE_STORES,
                     (string) $store->getCode(),
                     (string) $store->getName(),
-                    (int) $store->getId(),
+                    $storeId,
                     $this->resolveWebsiteCodeForStore($store),
                     $scopeValue,
                     $this->formatDisplayValue($scopeValue, $field)
@@ -117,14 +140,30 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
     }
 
     /**
-     * @return mixed
+     * Read only values explicitly saved at a lower scope. ScopeConfig returns
+     * inherited values, which would incorrectly report every child store when
+     * only its website has an override.
+     *
+     * @return array<string, array<int, mixed>>
      */
-    private function getCurrentValue(string $path, ?string $currentWebsiteId)
+    private function getExplicitValues(string $path): array
     {
-        if ($currentWebsiteId !== null) {
-            return $this->scopeConfig->getValue($path, ScopeInterface::SCOPE_WEBSITE, $currentWebsiteId);
+        $values = [
+            ScopeOverrideInterface::SCOPE_TYPE_WEBSITES => [],
+            ScopeOverrideInterface::SCOPE_TYPE_STORES => [],
+        ];
+        $collection = $this->configCollectionFactory->create();
+        $collection->addFieldToFilter('path', $path);
+
+        foreach ($collection as $configValue) {
+            $scope = (string) $configValue->getScope();
+            if (!isset($values[$scope])) {
+                continue;
+            }
+            $values[$scope][(int) $configValue->getScopeId()] = $configValue->getValue();
         }
-        return $this->scopeConfig->getValue($path);
+
+        return $values;
     }
 
     /**

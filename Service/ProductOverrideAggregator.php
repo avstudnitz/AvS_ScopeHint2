@@ -6,6 +6,8 @@ namespace AvS\ScopeHint\Service;
 
 use Magento\Eav\Model\Config as EavConfig;
 use Magento\Eav\Model\Entity\Attribute\AbstractAttribute;
+use Magento\Catalog\Api\Data\ProductInterface;
+use Magento\Framework\EntityManager\MetadataPool;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Store\Model\StoreManagerInterface;
 
@@ -44,6 +46,9 @@ class ProductOverrideAggregator
     /** @var StoreManagerInterface */
     private $storeManager;
 
+    /** @var MetadataPool */
+    private $metadataPool;
+
     /**
      * Per-request cache keyed by sorted product-id CSV.
      *
@@ -61,11 +66,13 @@ class ProductOverrideAggregator
     public function __construct(
         ResourceConnection $resource,
         EavConfig $eavConfig,
-        StoreManagerInterface $storeManager
+        StoreManagerInterface $storeManager,
+        MetadataPool $metadataPool
     ) {
         $this->resource     = $resource;
         $this->eavConfig    = $eavConfig;
         $this->storeManager = $storeManager;
+        $this->metadataPool = $metadataPool;
     }
 
     /**
@@ -93,6 +100,10 @@ class ProductOverrideAggregator
         $result     = [];
         $connection = $this->resource->getConnection();
         $storeMap   = $this->getStoreMap();
+        $metadata = $this->metadataPool->getMetadata(ProductInterface::class);
+        $linkField = $metadata->getLinkField();
+        $identifierField = $metadata->getIdentifierField();
+        $entityTable = $this->resource->getTableName('catalog_product_entity');
 
         foreach (self::$backendTypes as $backendType) {
             $tableName = $this->resource->getTableName('catalog_product_entity_' . $backendType);
@@ -103,16 +114,21 @@ class ProductOverrideAggregator
             $select = $connection->select()
                 ->from(
                     ['t' => $tableName],
-                    ['entity_id', 'attribute_id', 'store_id', 'value']
+                    ['attribute_id', 'store_id', 'value']
+                )
+                ->joinInner(
+                    ['entity' => $entityTable],
+                    'entity.' . $linkField . ' = t.' . $linkField,
+                    ['entity_id' => $identifierField]
                 )
                 ->joinInner(
                     ['admin' => $tableName],
-                    'admin.entity_id = t.entity_id'
+                    'admin.' . $linkField . ' = t.' . $linkField
                     . ' AND admin.attribute_id = t.attribute_id'
                     . ' AND admin.store_id = 0',
                     []
                 )
-                ->where('t.entity_id IN (?)', $productIds)
+                ->where('entity.' . $identifierField . ' IN (?)', $productIds)
                 ->where('t.store_id != ?', 0)
                 ->where('NOT (t.value <=> admin.value)');
 

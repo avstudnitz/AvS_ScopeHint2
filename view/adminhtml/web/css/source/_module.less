@@ -25,6 +25,16 @@
 //    @page__background-color      — defined in lib/web/css (= @color-white)
 //
 
+// Keep every interactive colour tied to the active admin theme. In
+// particular, border colours are not suitable hover backgrounds: they are
+// structural tokens and can have insufficient text contrast in child themes.
+@scopehint__surface-color: @field-control__background-color;
+@scopehint__text-color: @field-control__color;
+@scopehint__border-color: @field-control__border-color;
+@scopehint__accent-color: @field-control__focus__border-color;
+@scopehint__accent-background-color: darken(@scopehint__accent-color, 8%);
+@scopehint__hover-background-color: @action-menu__hover__background-color;
+
 .scopehint-popover {
     display: inline-block;
     position: relative;
@@ -39,25 +49,37 @@
     padding: 0 6px;
     min-width: 24px;
     height: 24px;
-    border: 1px solid @field-control__border-color;
+    border: 1px solid @scopehint__border-color;
     border-radius: 12px;
-    background: @color-white;
-    color: @field-label__color;
+    background: @scopehint__surface-color;
+    color: @scopehint__text-color;
     font-size: 11px;
     font-weight: 600;
     line-height: 1;
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 
-    &:hover,
+    &:hover {
+        background: @scopehint__hover-background-color;
+        border-color: @scopehint__accent-color;
+        color: @scopehint__text-color;
+    }
+
     &:focus {
-        border-color: @field-control__focus__border-color;
+        border-color: @scopehint__accent-color;
+        box-shadow: @focus__box-shadow;
         outline: none;
     }
 
+    &:focus-visible {
+        box-shadow: none;
+        outline: 2px solid @scopehint__accent-color;
+        outline-offset: 2px;
+    }
+
     &[aria-expanded="true"] {
-        background: @field-control__focus__border-color;
-        border-color: @field-control__focus__border-color;
+        background: @scopehint__accent-background-color;
+        border-color: @scopehint__accent-background-color;
         color: @color-white;
     }
 }
@@ -75,10 +97,11 @@
     max-width: 480px;
     max-height: 60vh;
     overflow-y: auto;
-    background: @color-white;
-    border: 1px solid @field-control__border-color;
-    border-radius: 2px;
+    background: @scopehint__surface-color;
+    border: 1px solid @scopehint__border-color;
+    border-radius: @field-control__border-radius;
     box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+    color: @scopehint__text-color;
     margin-top: 4px;
 
     &[hidden] {
@@ -91,8 +114,8 @@
     align-items: center;
     gap: 6px;
     padding: 8px;
-    border-bottom: 1px solid @field-control__border-color;
-    background: @color-white;
+    border-bottom: 1px solid @scopehint__border-color;
+    background: @scopehint__surface-color;
     position: sticky;
     top: 0;
     z-index: 1;
@@ -101,15 +124,22 @@
 .scopehint-search {
     flex: 1;
     padding: 4px 8px;
-    border: 1px solid @field-control__border-color;
-    border-radius: 2px;
+    border: 1px solid @scopehint__border-color;
+    border-radius: @field-control__border-radius;
     font-size: 12px;
-    color: @field-label__color;
-    background: @color-white;
+    color: @scopehint__text-color;
+    background: @scopehint__surface-color;
 
     &:focus {
-        border-color: @field-control__focus__border-color;
+        border-color: @scopehint__accent-color;
+        box-shadow: @focus__box-shadow;
         outline: none;
+    }
+
+    &:focus-visible {
+        box-shadow: none;
+        outline: 2px solid @scopehint__accent-color;
+        outline-offset: 1px;
     }
 }
 
@@ -120,7 +150,7 @@
     padding: 0;
     border: none;
     background: transparent;
-    color: @field-label__color;
+    color: @scopehint__text-color;
     font-size: 16px;
     line-height: 1;
     cursor: pointer;
@@ -129,10 +159,20 @@
     justify-content: center;
     border-radius: 2px;
 
-    &:hover,
+    &:hover {
+        background: @scopehint__hover-background-color;
+        color: @scopehint__text-color;
+    }
+
     &:focus {
-        background: @field-control__border-color;
+        box-shadow: @focus__box-shadow;
         outline: none;
+    }
+
+    &:focus-visible {
+        box-shadow: none;
+        outline: 2px solid @scopehint__accent-color;
+        outline-offset: 1px;
     }
 }
 
@@ -188,7 +228,7 @@
     padding: 0;
 
     > li {
-        border-bottom: 1px solid @field-control__border-color;
+        border-bottom: 1px solid @scopehint__border-color;
 
         &:last-child {
             border-bottom: none;
@@ -205,7 +245,7 @@
             cursor: pointer;
             font-size: 12px;
             font-weight: 600;
-            color: @field-label__color;
+            color: @scopehint__text-color;
             list-style: none;
             user-select: none;
 
@@ -220,10 +260,18 @@
                 transition: transform 0.15s;
             }
 
-            &:hover,
+            &:hover {
+                background: @scopehint__hover-background-color;
+                color: @scopehint__text-color;
+            }
+
             &:focus {
-                background: @field-control__border-color;
+                box-shadow: inset 0 0 0 1px @scopehint__accent-color;
                 outline: none;
+            }
+
+            &:focus-visible {
+                box-shadow: inset 0 0 0 2px @scopehint__accent-color;
             }
         }
 
@@ -239,7 +287,7 @@
             > li {
                 padding: 4px 10px 4px 24px;
                 font-size: 12px;
-                color: @field-label__color;
+                color: @scopehint__text-color;
 
                 &[data-search-hidden="true"] {
                     display: none;
@@ -247,12 +295,30 @@
 
                 code {
                     font-family: monospace;
-                    background: @field-control__border-color;
+                    background: @scopehint__hover-background-color;
+                    border: 1px solid @scopehint__border-color;
+                    color: @scopehint__text-color;
                     padding: 0 3px;
-                    border-radius: 2px;
+                    border-radius: @field-control__border-radius;
                     font-size: 11px;
                 }
             }
         }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scopehint-trigger,
+    .scopehint-websites details > summary::before {
+        transition: none;
+    }
+}
+
+@media (forced-colors: active) {
+    .scopehint-trigger:focus-visible,
+    .scopehint-search:focus-visible,
+    .scopehint-close:focus-visible,
+    .scopehint-websites details > summary:focus-visible {
+        outline-color: Highlight;
     }
 }

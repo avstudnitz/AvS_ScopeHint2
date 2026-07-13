@@ -11,4 +11,4 @@ parameters:
         - Test/*
     treatPhpDocTypesAsCertain: false
     ignoreErrors:
-        - '#Call to an undefined method Magento\\Framework\\Data\\Form\\Element\\AbstractElement::#'
+        - '#Magento\\Config\\Model\\Config\\Structure\\AbstractElement::getData\(\) invoked with 1 parameter#'

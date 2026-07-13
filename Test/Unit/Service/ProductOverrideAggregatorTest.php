@@ -11,6 +11,8 @@ use Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\Framework\DB\Select;
+use Magento\Framework\EntityManager\EntityMetadataInterface;
+use Magento\Framework\EntityManager\MetadataPool;
 use Magento\Store\Api\Data\StoreInterface;
 use Magento\Store\Api\Data\WebsiteInterface;
 use Magento\Store\Model\StoreManagerInterface;
@@ -36,11 +38,17 @@ class ProductOverrideAggregatorTest extends TestCase
         $this->resource     = $this->createMock(ResourceConnection::class);
         $this->eavConfig    = $this->createMock(EavConfig::class);
         $this->storeManager = $this->createMock(StoreManagerInterface::class);
+        $metadata = $this->createMock(EntityMetadataInterface::class);
+        $metadata->method('getLinkField')->willReturn('entity_id');
+        $metadata->method('getIdentifierField')->willReturn('entity_id');
+        $metadataPool = $this->createMock(MetadataPool::class);
+        $metadataPool->method('getMetadata')->willReturn($metadata);
 
         $this->aggregator = new ProductOverrideAggregator(
             $this->resource,
             $this->eavConfig,
-            $this->storeManager
+            $this->storeManager,
+            $metadataPool
         );
     }
 

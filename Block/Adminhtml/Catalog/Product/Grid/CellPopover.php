@@ -10,10 +10,8 @@ use Magento\Framework\Phrase;
 /**
  * Renders the inline scope-override popover HTML for a single product grid cell.
  *
- * When no overrides exist, returns the default value unchanged (not re-escaped —
- * the caller is responsible for escaping when building the plain cell value).
- * When overrides exist, wraps the value with a pill button that opens a flat
- * per-store list popover using the .scopehint-popover--cell LESS rules.
+ * The normal grid value is rendered separately through a text binding. This
+ * class returns only trusted ScopeHint markup for the companion HTML binding.
  *
  * The data-scopehint-popover attribute causes popover-bootstrap.js to bind the
  * JS behaviour automatically via its MutationObserver when the enriched HTML
@@ -32,14 +30,13 @@ class CellPopover
     /**
      * Render cell HTML for a product attribute column.
      *
-     * @param string $defaultValue The raw default-scope value (will be HTML-escaped).
      * @param array<int, array<string, string>> $overrides storeId → [displayValue, storeName, storeCode, websiteCode]
      * @return string
      */
-    public function render(string $defaultValue, array $overrides): string
+    public function render(array $overrides): string
     {
         if (empty($overrides)) {
-            return $defaultValue;
+            return '';
         }
 
         $byWebsite = [];
@@ -49,9 +46,8 @@ class CellPopover
             $byWebsite[$websiteCode][] = $override;
         }
 
-        $panelId      = 'scopehint-cell-' . substr(md5(uniqid('', true)), 0, 12);
+        $panelId      = 'scopehint-cell-' . bin2hex(random_bytes(6));
         $count        = count($overrides);
-        $escapedValue = $this->escaper->escapeHtml($defaultValue);
         $triggerLabel = $this->escaper->escapeHtmlAttr(
             (string) new Phrase('%1 scope override(s) — click to expand', [$count])
         );
@@ -61,8 +57,7 @@ class CellPopover
         $panelIdAttr = $this->escaper->escapeHtmlAttr($panelId);
         $closeLabel  = $this->escaper->escapeHtmlAttr((string) new Phrase('Close'));
 
-        $html  = '<span class="scopehint-cell-default">' . $escapedValue . '</span>';
-        $html .= '<span class="scopehint-popover scopehint-popover--cell" data-scopehint-popover="1">';
+        $html = '<span class="scopehint-popover scopehint-popover--cell" data-scopehint-popover="1">';
         $html .= '<button type="button"'
             . ' class="scopehint-trigger"'
             . ' aria-expanded="false"'

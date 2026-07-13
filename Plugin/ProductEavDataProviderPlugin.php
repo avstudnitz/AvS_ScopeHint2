@@ -8,6 +8,7 @@ use AvS\ScopeHint\Block\Adminhtml\Eav\Popover;
 use AvS\ScopeHint\Service\OverrideSourcePool;
 use Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\Eav;
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\Escaper;
 use Magento\Framework\Registry;
 use Magento\Framework\View\LayoutInterface;
 
@@ -46,16 +47,21 @@ class ProductEavDataProviderPlugin
     /** @var Registry */
     private $registry;
 
+    /** @var Escaper */
+    private $escaper;
+
     public function __construct(
         OverrideSourcePool $overrideSourcePool,
         LayoutInterface $layout,
         ScopeConfigInterface $scopeConfig,
-        Registry $registry
+        Registry $registry,
+        Escaper $escaper
     ) {
         $this->overrideSourcePool = $overrideSourcePool;
         $this->layout = $layout;
         $this->scopeConfig = $scopeConfig;
         $this->registry = $registry;
+        $this->escaper = $escaper;
     }
 
     /**
@@ -84,10 +90,12 @@ class ProductEavDataProviderPlugin
         }
 
         if ($this->scopeConfig->isSetFlag(self::CONFIG_LEGACY_TOOLTIP)) {
-            $lines = [];
+            $existingDescription = (string) ($fieldMeta['tooltip']['description'] ?? '');
+            $lines = $existingDescription !== '' ? [$existingDescription] : [];
 
             foreach ($overrides->getOverrides() as $override) {
-                $lines[] = $override->getScopeName() . ': ' . $override->getDisplayValue();
+                $lines[] = $this->escaper->escapeHtml($override->getScopeName())
+                    . ': ' . $override->getDisplayValue();
             }
 
             $result['arguments']['data']['config']['tooltip']['description'] = implode('<br>', $lines);
@@ -101,7 +109,8 @@ class ProductEavDataProviderPlugin
         $popoverHtml = $popoverBlock->toHtml();
 
         if ($popoverHtml !== '') {
-            $result['arguments']['data']['config']['additionalInfo'] = $popoverHtml;
+            $result['arguments']['data']['config']['additionalInfo'] =
+                (string) ($fieldMeta['additionalInfo'] ?? '') . $popoverHtml;
         }
 
         return $result;

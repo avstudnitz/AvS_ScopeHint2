@@ -35,7 +35,7 @@ class CatalogColumnFactoryPluginTest extends TestCase
         $result = $this->plugin->afterCreate($this->subject, $column, $attribute, null);
 
         $config = $result->getData('config');
-        $this->assertSame('ui/grid/cells/html', $config['bodyTmpl']);
+        $this->assertSame('AvS_ScopeHint/ui/grid/cells/scopehint', $config['bodyTmpl']);
     }
 
     public function testWebsiteScoped_textareaAttribute_setsBodyTmpl(): void
@@ -46,7 +46,7 @@ class CatalogColumnFactoryPluginTest extends TestCase
         $result = $this->plugin->afterCreate($this->subject, $column, $attribute, null);
 
         $config = $result->getData('config');
-        $this->assertSame('ui/grid/cells/html', $config['bodyTmpl']);
+        $this->assertSame('AvS_ScopeHint/ui/grid/cells/scopehint', $config['bodyTmpl']);
     }
 
     public function testGlobalScope_doesNotSetBodyTmpl(): void
@@ -101,7 +101,7 @@ class CatalogColumnFactoryPluginTest extends TestCase
         $result = $this->plugin->afterCreate($this->subject, $column, $attribute, null);
 
         $config = $result->getData('config');
-        $this->assertSame('ui/grid/cells/html', $config['bodyTmpl']);
+        $this->assertSame('AvS_ScopeHint/ui/grid/cells/scopehint', $config['bodyTmpl']);
         $this->assertSame('My Label', $config['label']);
         $this->assertTrue($config['visible']);
     }
