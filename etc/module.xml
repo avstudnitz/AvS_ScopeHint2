@@ -3,6 +3,8 @@
     <module name="AvS_ScopeHint">
         <sequence>
             <module name="Magento_Config"/>
+            <module name="Magento_Catalog"/>
+            <module name="Magento_Ui"/>
         </sequence>
     </module>
 </config>

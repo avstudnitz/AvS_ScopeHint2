@@ -4,61 +4,31 @@ declare(strict_types=1);
 
 namespace AvS\ScopeHint\Plugin;
 
+use AvS\ScopeHint\Api\Data\ScopeOverrideInterface;
+use AvS\ScopeHint\Service\ScopeOverrideDetectorInterface;
 use Magento\Config\Model\Config\Structure\Element\Field as Subject;
 use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Framework\App\RequestInterface;
-use Magento\Framework\Escaper;
-use Magento\Framework\Phrase;
-use Magento\Store\Api\WebsiteRepositoryInterface;
-use Magento\Store\Api\StoreRepositoryInterface;
-use Magento\Store\Api\Data\WebsiteInterface;
-use Magento\Store\Api\Data\StoreInterface;
-use Magento\Store\Model\ScopeInterface;
 
 class ConfigFieldPlugin
 {
-    const SCOPE_TYPE_WEBSITES = 'websites';
-    const SCOPE_TYPE_STORES = 'stores';
+    private const CONFIG_SHOW_PATH     = 'dev/debug/show_path_in_adminhtml';
+    private const CONFIG_LEGACY_TOOLTIP = 'dev/debug/scopehint_legacy_tooltip';
 
-    private const CONFIG_SHOW_PATH = 'dev/debug/show_path_in_adminhtml';
+    /** @var ScopeConfigInterface */
+    private $scopeConfig;
 
-    /** @var Escaper */
-    private $escaper;
+    /** @var ScopeOverrideDetectorInterface */
+    private $detector;
 
-    /**
-     * @var ScopeConfigInterface
-     */
-    private ScopeConfigInterface $scopeConfig;
-    /**
-     * @var WebsiteRepositoryInterface
-     */
-    private WebsiteRepositoryInterface $websiteRepository;
-    /**
-     * @var StoreRepositoryInterface
-     */
-    private StoreRepositoryInterface $storeRepository;
-    /**
-     * @var RequestInterface
-     */
-    private RequestInterface $request;
-
-     /**
-     * @var bool
-      */
-    private bool $isProcessing = false;
+    /** @var bool */
+    private $isProcessing = false;
 
     public function __construct(
-        Escaper $escaper,
         ScopeConfigInterface $scopeConfig,
-        WebsiteRepositoryInterface $websiteRepository,
-        StoreRepositoryInterface $storeRepository,
-        RequestInterface $request
+        ScopeOverrideDetectorInterface $detector
     ) {
-        $this->escaper = $escaper;
         $this->scopeConfig = $scopeConfig;
-        $this->websiteRepository = $websiteRepository;
-        $this->storeRepository = $storeRepository;
-        $this->request = $request;
+        $this->detector    = $detector;
     }
 
     /**
@@ -68,29 +38,23 @@ class ConfigFieldPlugin
      */
     public function afterGetTooltip(Subject $subject, $result)
     {
-        $lines = [$result];
-        foreach($this->websiteRepository->getList() as $website) {
-            if ($this->getWebsiteParam() || $this->getStoreParam()) {
-                continue;
-            }
-            // Only show website specific values in default scope
-            if ($scopeLine = $this->getScopeHint($subject, self::SCOPE_TYPE_WEBSITES, $website)) {
-                $lines[] = $scopeLine;
-            }
+        if (!$this->scopeConfig->isSetFlag(self::CONFIG_LEGACY_TOOLTIP)) {
+            return $result;
         }
-        foreach($this->storeRepository->getList() as $store) {
-            if ($this->getStoreParam($store)) {
-                continue;
-            }
-            if (($websiteId = $this->getWebsiteParam()) && ($store->getWebsiteId() != $websiteId)) {
-                continue;
-            }
-            // Only show store specific values in default scope and in parent website scope
-            if ($scopeLine = $this->getScopeHint($subject, self::SCOPE_TYPE_STORES, $store)) {
-                $lines[] = $scopeLine;
-            }
+
+        $path      = $this->getPath($subject);
+        $overrides = $this->detector->getOverrides($path, $subject);
+
+        if ($overrides->isEmpty()) {
+            return $result;
         }
-        return implode('<br />', array_filter($lines));
+
+        $lines = $result === '' || $result === null ? [] : [$result];
+        foreach ($overrides->getOverrides() as $override) {
+            $lines[] = $this->renderLine($override);
+        }
+
+        return implode('<br />', $lines);
     }
 
     /**
@@ -106,107 +70,29 @@ class ConfigFieldPlugin
             return $result;
         }
 
-        // to avoid a potential infinite loop, we keep a flag to see if we are already handling this particular field
+        // Guard against potential infinite loops if getData is called recursively
+        // while building the path_hint
         if (!$this->isProcessing) {
             $this->isProcessing = true;
-
-             $result['path_hint'] = '<small>' . __('Path: <code>%1</code>', $this->getPath($subject) . '</small>');
-
+            $result['path_hint'] = '<small>' . __('Path: <code>%1</code>', $this->getPath($subject)) . '</small>';
             $this->isProcessing = false;
-         }
+        }
 
         return $result;
     }
 
-    /**
-     * @param Subject $subject
-     * @return string
-     */
-    private function getPath(Subject $subject)
+    private function renderLine(ScopeOverrideInterface $override): string
     {
-        return $path = $subject->getConfigPath() ?: $subject->getPath();
-    }
-
-    /**
-     * @param Subject $field
-     * @param string $scopeType
-     * @param WebsiteInterface|StoreInterface $scope
-     * @return string
-     */
-    private function getScopeHint(Subject $field, $scopeType, $scope)
-    {
-        $path = $this->getPath($field);
-        $scopeLine = '';
-        if ($websiteId = $this->getWebsiteParam()) {
-            $currentValue = $this->scopeConfig->getValue(
-                $path,
-                ScopeInterface::SCOPE_WEBSITE,
-                $websiteId
-            );
+        if ($override->getScopeType() === ScopeOverrideInterface::SCOPE_TYPE_STORES) {
+            $phrase = __('Store <code>%1</code>: "%2"', $override->getScopeCode(), $override->getDisplayValue());
         } else {
-            $currentValue = $this->scopeConfig->getValue($path);
+            $phrase = __('Website <code>%1</code>: "%2"', $override->getScopeCode(), $override->getDisplayValue());
         }
-        $scopeValue = $this->scopeConfig->getValue($path, $scopeType, $scope->getId());
-
-        if (is_array($currentValue) || is_array($scopeValue)) {
-            return $scopeLine;
-        }
-
-        $currentValue = (string) $currentValue;
-        $scopeValue = (string) $scopeValue;
-
-        if ($scopeValue != $currentValue) {
-            $scopeValue = $this->escaper->escapeHtml($scopeValue);
-
-            switch($scopeType) {
-                case self::SCOPE_TYPE_STORES:
-                    return __(
-                        'Store <code>%1</code>: "%2"',
-                        $scope->getCode(),
-                        $this->getValueLabel($field, $scopeValue)
-                    );
-                case self::SCOPE_TYPE_WEBSITES:
-                    return __(
-                        'Website <code>%1</code>: "%2"',
-                        $scope->getCode(),
-                        $this->getValueLabel($field, $scopeValue)
-                    );
-            }
-        }
-        return $scopeLine;
+        return (string) $phrase;
     }
 
-    private function getValueLabel(Subject $field, string $scopeValue)
+    private function getPath(Subject $subject): string
     {
-        $scopeValue = trim($scopeValue);
-        if ($field->hasOptions()) {
-            if ($field->getType() === 'multiselect' && strpos($scopeValue, ',') !== false) {
-                return implode(
-                    ', ',
-                    array_map(
-                        function ($key) use ($field) {
-                            return $this->getValueLabel($field, $key);
-                        },
-                        explode(',', $scopeValue)
-                    )
-                );
-            }
-            foreach ($field->getOptions() as $option) {
-                if (is_array($option) && $option['value'] == $scopeValue) {
-                    return $option['label'];
-                }
-            }
-        }
-        return $scopeValue;
-    }
-
-    private function getWebsiteParam(): ?string
-    {
-        return $this->request->getParam('website');
-    }
-
-    private function getStoreParam(): ?string
-    {
-        return $this->request->getParam('store');
+        return (string) ($subject->getConfigPath() ?: $subject->getPath());
     }
 }

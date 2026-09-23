@@ -10,8 +10,9 @@ Facts
 
 Description
 -----------
-Whenever a configuration setting is overwritten by a lower level website or store view, an icon is displayed.
-On Mouseover, a list of all stores / websites which overwrite the setting is shown with the respective values.
+Whenever a configuration setting is overwritten by a lower-level website or store view, an icon is displayed.
+Clicking the icon opens an accessible popover grouped by website with the overridden values.
+Product Page Builder attributes are supported, with rich content represented as a concise text preview.
 See the screenshot to get an impression of what the module does:
 
 ![Screenshot](scopehint2-screenshot.png?raw=true "ScopeHint for Magento 2")
@@ -22,11 +23,12 @@ Stores -> Settings -> Configuration -> Advanced -> Developer -> Debug -> `Displa
 
 Requirements
 ------------
-- PHP >= 5.6.0
+- PHP 8.1 through 8.5
 
 Compatibility
 -------------
-- Magento  >= 2.1.0 (not tested on 2.0.x)
+- Magento 2.4.x (Open Source and Commerce)
+- Compatible with the default backend theme, the Mage-OS M137 admin theme, and the Hyvä commerce admin theme
 
 Installation Instructions
 -------------------------
@@ -67,6 +69,18 @@ Andreas von Studnitz
 Licence
 -------
 [OSL - Open Software Licence 3.0](http://opensource.org/licenses/osl-3.0.php)
+
+Performance
+-----------
+When a category is edited at a non-default store-view scope, the module loads the category once per
+store view to check for overridden attribute values. On large setups this can issue many
+`CategoryRepository::get()` calls (one per store per page load of the category edit form).
+To prevent excessive load, detection is automatically skipped — and a warning is written to the Magento
+system log — when the total number of store views exceeds the configurable threshold.
+
+The threshold is set under:
+**Stores → Settings → Configuration → Advanced → Developer → Debug → Maximum stores for scope hint detection**
+(config path `dev/debug/scopehint_max_stores`, default **50**).
 
 Copyright
 ---------

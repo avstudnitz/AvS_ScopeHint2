@@ -1,0 +1,66 @@
+<?php
+/**
+ * @var \AvS\ScopeHint\Block\Adminhtml\System\Config\Popover $block
+ */
+$overrides     = $block->getOverrides();
+$totalCount    = $block->getTotalCount();
+$expandAll     = $block->shouldExpandAll();
+$showSearch    = $block->shouldShowSearch();
+$panelId       = $block->escapeHtmlAttr($block->getFieldHtmlId());
+$panelLabel    = $block->escapeHtmlAttr((string) __('%1 scope overrides', $totalCount));
+$triggerLabel  = $block->escapeHtmlAttr((string) __('%1 scope overrides — click to expand', $totalCount));
+?>
+<?php if ($overrides && !$overrides->isEmpty()): ?>
+<div class="scopehint-popover" data-mage-init='{"AvS_ScopeHint/js/popover":{}}'>
+    <button type="button"
+            class="scopehint-trigger"
+            aria-expanded="false"
+            aria-controls="<?= $panelId ?>"
+            aria-label="<?= $triggerLabel ?>">
+        <span class="scopehint-badge"><?= (int) $totalCount ?></span>
+    </button>
+    <div class="scopehint-panel"
+         id="<?= $panelId ?>"
+         role="dialog"
+         aria-modal="false"
+         aria-label="<?= $panelLabel ?>"
+         hidden>
+        <header class="scopehint-panel-header">
+            <?php if ($showSearch): ?>
+            <input type="search"
+                   class="scopehint-search"
+                   placeholder="<?= $block->escapeHtmlAttr((string) __('Filter…')) ?>"
+                   aria-label="<?= $block->escapeHtmlAttr((string) __('Filter scope overrides')) ?>">
+            <?php endif; ?>
+            <button type="button"
+                    class="scopehint-close"
+                    aria-label="<?= $block->escapeHtmlAttr((string) __('Close')) ?>">&#x00D7;</button>
+        </header>
+        <ul class="scopehint-websites">
+            <?php foreach ($overrides->getOverridesByWebsite() as $websiteCode => $websiteOverrides): ?>
+            <?php
+                $websiteCode   = (string) $websiteCode;
+                $storeCount    = count($websiteOverrides);
+                $summaryLabel  = $block->escapeHtml(
+                    (string) __('Website: %1 (%2 override(s))', $websiteCode, $storeCount)
+                );
+            ?>
+            <li data-website-code="<?= $block->escapeHtmlAttr($websiteCode) ?>">
+                <details<?= $expandAll ? ' open' : '' ?>>
+                    <summary><?= $summaryLabel ?></summary>
+                    <ul>
+                        <?php foreach ($websiteOverrides as $override): ?>
+                        <li data-store-code="<?= $block->escapeHtmlAttr($override->getScopeCode()) ?>">
+                            <?= $block->escapeHtml($override->getScopeName()) ?>
+                            (<code><?= $block->escapeHtml($override->getScopeCode()) ?></code>):
+                            &ldquo;<?= /* @noEscape */ $override->getDisplayValue() ?>&rdquo;
+                        </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </details>
+            </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+</div>
+<?php endif; ?>

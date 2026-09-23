@@ -9,6 +9,10 @@
                 type="AvS\ScopeHint\Plugin\ConfigFormFieldPlugin"
                 sortOrder="1"
                 disabled="false"/>
+        <plugin name="avs_scopehint_plugin_inject_popover"
+                type="AvS\ScopeHint\Plugin\ConfigBlockFieldPlugin"
+                sortOrder="20"
+                disabled="false"/>
     </type>
 
     <type name="Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\Eav">
@@ -20,5 +24,47 @@
                 type="AvS\ScopeHint\Plugin\UIScopeLabel"
                 sortOrder="1"
                 disabled="false" />
+    </type>
+
+    <type name="Magento\Catalog\Ui\Component\ColumnFactory">
+        <plugin name="avs_scopehint_column_factory_html_cells"
+                type="AvS\ScopeHint\Plugin\CatalogColumnFactoryPlugin"
+                sortOrder="1"
+                disabled="false"/>
+    </type>
+    <type name="Magento\Catalog\Ui\DataProvider\Product\ProductDataProvider">
+        <plugin name="avs_scopehint_grid_inline_overrides"
+                type="AvS\ScopeHint\Plugin\ProductGridDataProviderPlugin"
+                sortOrder="1"
+                disabled="false" />
+    </type>
+    <type name="AvS\ScopeHint\Service\ValueFormatter\Pool">
+        <arguments>
+            <argument name="formatters" xsi:type="array">
+                <item name="serialized_array" xsi:type="object">AvS\ScopeHint\Service\ValueFormatter\SerializedArrayFormatter</item>
+                <item name="datetime" xsi:type="object">AvS\ScopeHint\Service\ValueFormatter\DatetimeFormatter</item>
+                <item name="masked" xsi:type="object">AvS\ScopeHint\Service\ValueFormatter\MaskedFormatter</item>
+                <item name="file" xsi:type="object">AvS\ScopeHint\Service\ValueFormatter\FileFormatter</item>
+                <item name="editor" xsi:type="object">AvS\ScopeHint\Service\ValueFormatter\EditorFormatter</item>
+                <item name="default" xsi:type="object">AvS\ScopeHint\Service\ValueFormatter\DefaultFormatter</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <type name="Magento\Catalog\Model\Category\DataProvider">
+        <plugin name="avs_scopehint_category_dataprovider"
+                type="AvS\ScopeHint\Plugin\CategoryDataProviderPlugin"
+                sortOrder="1"
+                disabled="false" />
+    </type>
+
+    <type name="AvS\ScopeHint\Service\OverrideSourcePool">
+        <arguments>
+            <argument name="sources" xsi:type="array">
+                <item name="pagebuilder_product" xsi:type="object" sortOrder="50">AvS\ScopeHint\Service\OverrideSource\PageBuilderProductOverrideSource</item>
+                <item name="eav_product" xsi:type="object" sortOrder="100">AvS\ScopeHint\Service\OverrideSource\EavProductOverrideSource</item>
+                <item name="eav_category" xsi:type="object" sortOrder="200">AvS\ScopeHint\Service\OverrideSource\EavCategoryOverrideSource</item>
+            </argument>
+        </arguments>
     </type>
 </config>
