@@ -9,6 +9,7 @@ use AvS\ScopeHint\Api\Data\ScopeOverrideInterface;
 use AvS\ScopeHint\Api\OverrideSourceInterface;
 use AvS\ScopeHint\Model\Data\OverrideResult;
 use AvS\ScopeHint\Model\Data\ScopeOverride;
+use AvS\ScopeHint\Service\EavOptionLabelResolver;
 use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Magento\Eav\Model\Config as EavConfig;
 use Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface;
@@ -56,6 +57,9 @@ class EavCategoryOverrideSource implements OverrideSourceInterface
     /** @var LoggerInterface */
     private $logger;
 
+    /** @var EavOptionLabelResolver */
+    private $optionLabelResolver;
+
     /**
      * Per-request cache of category objects keyed by "categoryId_storeId".
      *
@@ -76,7 +80,8 @@ class EavCategoryOverrideSource implements OverrideSourceInterface
         ScopeConfigInterface $scopeConfig,
         EavConfig $eavConfig,
         Escaper $escaper,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        EavOptionLabelResolver $optionLabelResolver
     ) {
         $this->categoryRepository = $categoryRepository;
         $this->storeManager = $storeManager;
@@ -84,6 +89,7 @@ class EavCategoryOverrideSource implements OverrideSourceInterface
         $this->eavConfig = $eavConfig;
         $this->escaper = $escaper;
         $this->logger = $logger;
+        $this->optionLabelResolver = $optionLabelResolver;
     }
 
     /**
@@ -121,10 +127,15 @@ class EavCategoryOverrideSource implements OverrideSourceInterface
      * @param string $entityType
      * @param int    $entityId
      * @param array  $fieldMeta
+     * @param int    $storeId
      * @return OverrideResultInterface
      */
-    public function getOverrides(string $entityType, int $entityId, array $fieldMeta): OverrideResultInterface
-    {
+    public function getOverrides(
+        string $entityType,
+        int $entityId,
+        array $fieldMeta,
+        int $storeId = 0
+    ): OverrideResultInterface {
         $stores = $this->getStores();
 
         $maxStores = (int) $this->scopeConfig->getValue(self::XML_PATH_MAX_STORES);
@@ -146,7 +157,7 @@ class EavCategoryOverrideSource implements OverrideSourceInterface
         }
 
         $attributeCode = (string) $fieldMeta['code'];
-        $currentCategory = $this->loadCategory($entityId, 0);
+        $currentCategory = $this->loadCategory($entityId, $storeId);
 
         if ($currentCategory === null) {
             return new OverrideResult([]);
@@ -156,8 +167,13 @@ class EavCategoryOverrideSource implements OverrideSourceInterface
         $overrides = [];
 
         foreach ($stores as $store) {
-            $storeId = (int) $store->getId();
-            $storeCategory = $this->loadCategory($entityId, $storeId);
+            $otherStoreId = (int) $store->getId();
+
+            if ($otherStoreId === $storeId) {
+                continue;
+            }
+
+            $storeCategory = $this->loadCategory($entityId, $otherStoreId);
 
             if ($storeCategory === null) {
                 continue;
@@ -176,7 +192,7 @@ class EavCategoryOverrideSource implements OverrideSourceInterface
                 ScopeOverrideInterface::SCOPE_TYPE_STORES,
                 (string) $store->getCode(),
                 (string) $store->getName(),
-                $storeId,
+                $otherStoreId,
                 $websiteCode,
                 $storeValue,
                 $displayValue
@@ -218,14 +234,11 @@ class EavCategoryOverrideSource implements OverrideSourceInterface
         if ($valueAsString !== '') {
             try {
                 $attribute = $this->eavConfig->getAttribute('catalog_category', $attributeCode);
-                if ($attribute && $attribute->getFrontendInput() === 'select') {
-                    $optionText = $attribute->getSource()->getOptionText($valueAsString);
-                    if ($optionText !== false && $optionText !== null) {
-                        $valueAsString = (string) $optionText;
-                    }
+                if ($attribute) {
+                    $valueAsString = $this->optionLabelResolver->resolve($attribute, $valueAsString);
                 }
             } catch (\Throwable $ex) {
-                // fall through — return raw value
+                // Attribute lookup failed: show the raw value.
             }
         }
 

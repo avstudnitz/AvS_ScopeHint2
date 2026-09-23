@@ -23,7 +23,7 @@ Stores -> Settings -> Configuration -> Advanced -> Developer -> Debug -> `Displa
 
 Requirements
 ------------
-- PHP 7.4 or 8.1 through 8.5
+- PHP 8.1 through 8.5
 
 Compatibility
 -------------

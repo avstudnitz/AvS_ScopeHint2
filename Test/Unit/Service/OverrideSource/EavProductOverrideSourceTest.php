@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace AvS\ScopeHint\Test\Unit\Service\OverrideSource;
 
 use AvS\ScopeHint\Api\Data\ScopeOverrideInterface;
+use AvS\ScopeHint\Service\EavOptionLabelResolver;
 use AvS\ScopeHint\Service\OverrideSource\EavProductOverrideSource;
+use Magento\Catalog\Model\ResourceModel\Eav\Attribute as CatalogAttribute;
+use Magento\Catalog\Model\ResourceModel\Product as ProductResource;
+use Magento\Eav\Model\Entity\Attribute\Source\AbstractSource;
 use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
@@ -59,7 +63,8 @@ class EavProductOverrideSourceTest extends TestCase
             $this->storeManager,
             $this->scopeConfig,
             $this->escaper,
-            $this->logger
+            $this->logger,
+            new EavOptionLabelResolver()
         );
     }
 
@@ -165,6 +170,58 @@ class EavProductOverrideSourceTest extends TestCase
         self::assertSame('de', $overrides[0]->getScopeCode());
     }
 
+    public function testGetOverridesComparesAgainstEditedStoreAndExcludesIt(): void
+    {
+        $englishStore = $this->createStore(1, 'en', 'English Store', 1);
+        $germanStore = $this->createStore(2, 'de', 'German Store', 1);
+        $this->storeManager->method('getStores')->willReturn([$englishStore, $germanStore]);
+        $this->storeManager->method('getWebsite')->willReturn($this->createWebsite(1, 'base'));
+
+        $productsByStore = [
+            0 => $this->createProduct(5, 'name', 'Default Name'),
+            1 => $this->createProduct(5, 'name', 'Default Name'),
+            2 => $this->createProduct(5, 'name', 'Deutscher Name'),
+        ];
+        $this->productRepository->method('getById')->willReturnCallback(
+            static function (int $id, bool $editMode, int $storeId) use ($productsByStore) {
+                return $productsByStore[$storeId];
+            }
+        );
+
+        $overrides = $this->source->getOverrides('product', 5, ['code' => 'name'], 2)->getOverrides();
+
+        self::assertCount(1, $overrides);
+        self::assertSame('en', $overrides[0]->getScopeCode());
+        self::assertSame(1, $overrides[0]->getScopeId());
+        self::assertSame('Default Name', $overrides[0]->getDisplayValue());
+    }
+
+    public function testGetOverridesResolvesMultiselectLabels(): void
+    {
+        $this->storeManager->method('getStores')->willReturn([$this->createStore(2, 'de', 'German Store', 1)]);
+        $this->storeManager->method('getWebsite')->willReturn($this->createWebsite(1, 'base'));
+
+        $source = $this->createMock(AbstractSource::class);
+        $source->method('getOptionText')->with('4,5')->willReturn(['Cotton', 'Wool']);
+        $attribute = $this->createMock(CatalogAttribute::class);
+        $attribute->method('usesSource')->willReturn(true);
+        $attribute->method('getSource')->willReturn($source);
+        $productResource = $this->createMock(ProductResource::class);
+        $productResource->method('getAttribute')->with('material')->willReturn($attribute);
+
+        $defaultProduct = $this->createProduct(5, 'material', '4');
+        $storeProduct = $this->createProduct(5, 'material', '4,5', $productResource);
+        $this->productRepository->method('getById')->willReturnCallback(
+            static function (int $id, bool $editMode, int $storeId) use ($defaultProduct, $storeProduct) {
+                return $storeId === 0 ? $defaultProduct : $storeProduct;
+            }
+        );
+
+        $overrides = $this->source->getOverrides('product', 5, ['code' => 'material'])->getOverrides();
+
+        self::assertSame('Cotton, Wool', $overrides[0]->getDisplayValue());
+    }
+
     public function testGetOverridesSkipsUnchangedStoreValue(): void
     {
         $store = $this->createStore(2, 'de', 'German Store', 1);
@@ -200,7 +257,8 @@ class EavProductOverrideSourceTest extends TestCase
             $this->storeManager,
             $scopeConfig,
             $this->escaper,
-            $this->logger
+            $this->logger,
+            new EavOptionLabelResolver()
         );
 
         $result = $source->getOverrides('product', 1, ['code' => 'name']);
@@ -215,8 +273,12 @@ class EavProductOverrideSourceTest extends TestCase
     /**
      * @param mixed $value
      */
-    private function createProduct(int $id, string $attributeCode, $value): ProductInterface
-    {
+    private function createProduct(
+        int $id,
+        string $attributeCode,
+        $value,
+        ?ProductResource $productResource = null
+    ): ProductInterface {
         $product = $this->getMockBuilder(ProductInterface::class)
             ->disableOriginalConstructor()
             ->addMethods(['getData', 'getResource'])
@@ -226,8 +288,7 @@ class EavProductOverrideSourceTest extends TestCase
             ->with($attributeCode)
             ->willReturn($value);
 
-        // getResource() → null; resolveDisplayValue() tries attribute source but catches Throwable
-        $product->method('getResource')->willReturn(null);
+        $product->method('getResource')->willReturn($productResource);
 
         return $product;
     }

@@ -9,5 +9,3 @@ parameters:
     excludePaths:
         - Test/*
     treatPhpDocTypesAsCertain: false
-    ignoreErrors:
-        - '#Magento\\Config\\Model\\Config\\Structure\\AbstractElement::getData\(\) invoked with 1 parameter#'

@@ -9,7 +9,7 @@ use AvS\ScopeHint\Api\Data\ScopeOverrideInterface;
 use AvS\ScopeHint\Block\Adminhtml\Eav\Popover;
 use AvS\ScopeHint\Plugin\CategoryDataProviderPlugin;
 use AvS\ScopeHint\Service\OverrideSourcePool;
-use Magento\Catalog\Api\Data\CategoryInterface;
+use Magento\Catalog\Model\Category;
 use Magento\Catalog\Model\Category\DataProvider;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Escaper;
@@ -194,16 +194,16 @@ class CategoryDataProviderPluginTest extends TestCase
         self::assertArrayNotHasKey('additionalInfo', $config);
     }
 
-    public function testPoolReceivesCorrectEntityTypeAndId(): void
+    public function testPoolReceivesEntityTypeIdAndEditedStore(): void
     {
-        $this->stubCategory(42);
+        $this->stubCategory(42, 3);
         $this->scopeConfig->method('isSetFlag')->willReturn(false);
 
         $fieldMeta = ['code' => 'description'];
 
         $this->pool->expects(self::once())
             ->method('resolve')
-            ->with('category', 42, $fieldMeta)
+            ->with('category', 42, $fieldMeta, 3)
             ->willReturn(null);
 
         $meta = $this->buildMeta('general', 'description', $fieldMeta);
@@ -237,18 +237,17 @@ class CategoryDataProviderPluginTest extends TestCase
     // Helpers
     // ------------------------------------------------------------------
 
-    private function stubCategory(int $id): void
+    private function stubCategory(int $id, int $storeId = 0): void
     {
-        $category = $this->createCategory($id);
+        $category = $this->createCategory($id, $storeId);
         $this->subject->method('getCurrentCategory')->willReturn($category);
     }
 
-    private function createCategory(?int $id): CategoryInterface
+    private function createCategory(?int $id, int $storeId = 0): Category
     {
-        $category = $this->getMockBuilder(CategoryInterface::class)
-            ->disableOriginalConstructor()
-            ->getMockForAbstractClass();
+        $category = $this->createMock(Category::class);
         $category->method('getId')->willReturn($id);
+        $category->method('getStoreId')->willReturn($storeId);
 
         return $category;
     }

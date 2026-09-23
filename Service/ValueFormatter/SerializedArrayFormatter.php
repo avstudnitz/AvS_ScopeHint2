@@ -63,11 +63,7 @@ class SerializedArrayFormatter implements ValueFormatterInterface
 
     private function isSerializedBackend(Field $field): bool
     {
-        $backendModel = $field->getData('backend_model');
-
-        if (is_object($backendModel)) {
-            return $backendModel instanceof \Magento\Config\Model\Config\Backend\Serialized;
-        }
+        $backendModel = $field->getAttribute('backend_model');
 
         if (!is_string($backendModel) || $backendModel === '') {
             return false;
@@ -81,10 +77,6 @@ class SerializedArrayFormatter implements ValueFormatterInterface
             return true;
         }
 
-        if (is_subclass_of($backendModel, \Magento\Config\Model\Config\Backend\Serialized::class)) {
-            return true;
-        }
-
-        return false;
+        return is_subclass_of($backendModel, \Magento\Config\Model\Config\Backend\Serialized::class);
     }
 }

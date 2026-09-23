@@ -32,14 +32,9 @@ class EditorFormatter implements ValueFormatterInterface
             return true;
         }
 
-        $frontendModel = $field->getData('frontend_model');
-        if (is_object($frontendModel)) {
-            $frontendModel = get_class($frontendModel);
-        } elseif (!is_string($frontendModel)) {
-            return false;
-        }
+        $frontendModel = $field->getAttribute('frontend_model');
 
-        return $frontendModel !== '' && stripos((string) $frontendModel, 'Pagebuilder') !== false;
+        return is_string($frontendModel) && stripos($frontendModel, 'Pagebuilder') !== false;
     }
 
     /**

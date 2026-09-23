@@ -19,6 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `ProductEavDataProviderPlugin`).
 - `Service\OverrideSource\EavCategoryOverrideSource` — default source covering
   real Magento EAV category attributes.
+- `Plugin\CategoryDataProviderPlugin` — scope-override popovers on the category
+  edit form, using the same `OverrideSourcePool` and legacy-tooltip flag as the
+  product form.
 - `Block\Adminhtml\Eav\Popover` + `view/adminhtml/templates/eav/popover.phtml`
   — interactive popover block for EAV UI form fields (mirrors the system-config
   popover block from PR 5).
@@ -34,14 +37,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- System configuration override detection loads all website/store-view rows of
+  `core_config_data` once per request instead of one query per rendered field.
+- Select, multiselect and `source_model` config values resolve to option labels
+  through `Field::getOptions()`; serialized-array and editor formatters read the
+  field definition through `Field::getAttribute()`.
+- Product and category form hints compare against the value in the store view
+  being edited and exclude that store view, as in earlier releases.
+- Product grid pills show option labels, include store values that have no
+  default-scope row, and only scan the attributes of the grid's columns. The
+  static Status and Visibility columns show pills as well.
+- Serialized-array (field array) config fields show the popover in their value
+  cell; their renderers never output `after_element_html`.
 - `Plugin\ProductEavDataProviderPlugin` — slim; delegates override detection to
   `OverrideSourcePool`, renders popover into the field's `additionalInfo` meta
   slot. Legacy `<br>`-list tooltip in `tooltip.description` preserved behind the
   `dev/debug/scopehint_legacy_tooltip` config flag.
-- `Plugin\CategoryDataProviderPlugin` — refactored to the same shape as
-  `ProductEavDataProviderPlugin`. Iterates the meta tree, delegates to
-  `OverrideSourcePool`, writes popover HTML to `additionalInfo`. Legacy tooltip
-  mode preserved via the same flag.
 - System configuration detection now reads explicit `core_config_data` rows,
   so inherited website values are not misreported as store-view overrides.
 - Product grid aggregation uses Magento's metadata link field and therefore
@@ -57,11 +68,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `ProductRepositoryInterface`. New constructor accepts `OverrideSourcePool`,
   `LayoutInterface`, `ScopeConfigInterface`, `Registry`, and `Escaper`. These are private
   plugin classes with no public API contract; no deprecated alias is provided.
-- **`Plugin\CategoryDataProviderPlugin` constructor changed.** Previous
-  constructor accepted `EavScopeOverrideDetector`, `EavConfig`,
-  `RequestInterface`, and `ArrayManager`. New constructor accepts
-  `OverrideSourcePool`, `LayoutInterface`, `ScopeConfigInterface`,
-  `ArrayManager`, and `Escaper`.
+- **`Plugin\ConfigFieldPlugin` public constants removed.** `SCOPE_TYPE_WEBSITES`
+  and `SCOPE_TYPE_STORES` no longer exist on the plugin; use
+  `Api\Data\ScopeOverrideInterface::SCOPE_TYPE_WEBSITES` / `SCOPE_TYPE_STORES`
+  (same values).
+- **`Plugin\ConfigFieldPlugin` constructor changed.** Previous constructor
+  accepted `Escaper`, `ScopeConfigInterface`, `WebsiteRepositoryInterface`,
+  `StoreRepositoryInterface`, and `RequestInterface`. New constructor accepts
+  `ScopeConfigInterface` and `Service\ScopeOverrideDetectorInterface`.
+- **PHP 7.4 support dropped.** The module now requires PHP 8.1 or later.
 
-If you have overridden either plugin class via `<preference>` in your DI
+If you have overridden one of these plugin classes via `<preference>` in your DI
 configuration, update your constructor accordingly.

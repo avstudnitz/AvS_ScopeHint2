@@ -49,6 +49,9 @@ class ProductOverrideAggregator
     /** @var MetadataPool */
     private $metadataPool;
 
+    /** @var EavOptionLabelResolver */
+    private $optionLabelResolver;
+
     /**
      * Per-request cache keyed by sorted product-id CSV.
      *
@@ -67,50 +70,66 @@ class ProductOverrideAggregator
         ResourceConnection $resource,
         EavConfig $eavConfig,
         StoreManagerInterface $storeManager,
-        MetadataPool $metadataPool
+        MetadataPool $metadataPool,
+        EavOptionLabelResolver $optionLabelResolver
     ) {
         $this->resource     = $resource;
         $this->eavConfig    = $eavConfig;
         $this->storeManager = $storeManager;
         $this->metadataPool = $metadataPool;
+        $this->optionLabelResolver = $optionLabelResolver;
     }
 
     /**
      * Returns per-(product, attributeCode, storeId) override rows for a batch of products.
      *
+     * Only the given attribute codes are scanned, so large text attributes that are not
+     * shown in the grid are never read.
+     *
      * Structure:
      *   [productId => [attributeCode => [storeId => [displayValue, storeName, storeCode, websiteCode]]]]
      *
      * @param int[] $productIds
+     * @param string[] $attributeCodes
      * @return array<int, array<string, array<int, array<string, string>>>>
      */
-    public function getOverrides(array $productIds): array
+    public function getOverrides(array $productIds, array $attributeCodes): array
     {
-        if (empty($productIds)) {
+        if (empty($productIds) || empty($attributeCodes)) {
             return [];
         }
 
         sort($productIds);
-        $cacheKey = implode(',', $productIds);
+        $attributeCodes = array_values(array_unique($attributeCodes));
+        sort($attributeCodes);
+        $cacheKey = implode(',', $productIds) . '|' . implode(',', $attributeCodes);
 
         if (isset($this->cache[$cacheKey])) {
             return $this->cache[$cacheKey];
         }
 
-        $result     = [];
+        $result = [];
+        $attributesByBackendType = $this->groupAttributesByBackendType($attributeCodes);
+
+        if (empty($attributesByBackendType)) {
+            $this->cache[$cacheKey] = $result;
+
+            return $result;
+        }
+
         $connection = $this->resource->getConnection();
-        $storeMap   = $this->getStoreMap();
+        $storeMap = $this->getStoreMap();
         $metadata = $this->metadataPool->getMetadata(ProductInterface::class);
         $linkField = $metadata->getLinkField();
         $identifierField = $metadata->getIdentifierField();
         $entityTable = $this->resource->getTableName('catalog_product_entity');
 
-        foreach (self::$backendTypes as $backendType) {
+        foreach ($attributesByBackendType as $backendType => $attributesById) {
             $tableName = $this->resource->getTableName('catalog_product_entity_' . $backendType);
 
-            // Self-join: t = store-scoped row, admin = admin (store_id=0) row for same product+attribute.
-            // NULL-safe inequality NOT (t.value <=> admin.value) ensures we exclude rows that merely
-            // copy the admin value even when both are NULL.
+            // Left join: a store row without an admin row is still an override.
+            // NOT (t.value <=> admin.value) is NULL-safe, so it also covers the missing admin row
+            // and excludes store rows that merely repeat the admin value.
             $select = $connection->select()
                 ->from(
                     ['t' => $tableName],
@@ -121,7 +140,7 @@ class ProductOverrideAggregator
                     'entity.' . $linkField . ' = t.' . $linkField,
                     ['entity_id' => $identifierField]
                 )
-                ->joinInner(
+                ->joinLeft(
                     ['admin' => $tableName],
                     'admin.' . $linkField . ' = t.' . $linkField
                     . ' AND admin.attribute_id = t.attribute_id'
@@ -129,34 +148,21 @@ class ProductOverrideAggregator
                     []
                 )
                 ->where('entity.' . $identifierField . ' IN (?)', $productIds)
+                ->where('t.attribute_id IN (?)', array_keys($attributesById))
                 ->where('t.store_id != ?', 0)
                 ->where('NOT (t.value <=> admin.value)');
 
-            $rows = $connection->fetchAll($select);
+            foreach ($connection->fetchAll($select) as $row) {
+                $attribute = $attributesById[(int) $row['attribute_id']] ?? null;
+                $storeId = (int) $row['store_id'];
 
-            foreach ($rows as $row) {
-                $attributeId = (int) $row['attribute_id'];
-                $entityId    = (int) $row['entity_id'];
-                $storeId     = (int) $row['store_id'];
-                $value       = $row['value'];
-
-                $attribute = $this->resolveAttribute($attributeId);
-
-                if ($attribute === null) {
+                if ($attribute === null || !isset($storeMap[$storeId])) {
                     continue;
                 }
 
-                $attributeCode = $attribute->getAttributeCode();
-
-                if (!isset($storeMap[$storeId])) {
-                    continue;
-                }
-
-                $storeInfo    = $storeMap[$storeId];
-                $displayValue = $this->formatValue($value, $attribute);
-
-                $result[$entityId][$attributeCode][$storeId] = [
-                    'displayValue' => $displayValue,
+                $storeInfo = $storeMap[$storeId];
+                $result[(int) $row['entity_id']][$attribute->getAttributeCode()][$storeId] = [
+                    'displayValue' => $this->formatValue($row['value'], $attribute),
                     'storeName'    => $storeInfo['storeName'],
                     'storeCode'    => $storeInfo['storeCode'],
                     'websiteCode'  => $storeInfo['websiteCode'],
@@ -170,21 +176,50 @@ class ProductOverrideAggregator
     }
 
     /**
-     * Resolve an attribute by ID, filtering out skipped types and global-scope attributes.
-     * Returns null when the attribute should be ignored.
+     * Resolves attribute codes to scannable attributes grouped by backend table.
+     * Unknown codes (plain grid fields such as entity_id or qty), static attributes,
+     * global-scope attributes and image/media/gallery attributes are dropped.
+     *
+     * @param string[] $attributeCodes
+     * @return array<string, array<int, AbstractAttribute>>
      */
-    private function resolveAttribute(int $attributeId): ?AbstractAttribute
+    private function groupAttributesByBackendType(array $attributeCodes): array
+    {
+        $grouped = [];
+
+        foreach ($attributeCodes as $attributeCode) {
+            $attribute = $this->resolveAttribute((string) $attributeCode);
+
+            if ($attribute === null) {
+                continue;
+            }
+
+            $backendType = (string) $attribute->getBackendType();
+
+            if (!in_array($backendType, self::$backendTypes, true)) {
+                continue;
+            }
+
+            $grouped[$backendType][(int) $attribute->getAttributeId()] = $attribute;
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * Returns null when the attribute does not exist or should be ignored.
+     */
+    private function resolveAttribute(string $attributeCode): ?AbstractAttribute
     {
         try {
-            $attribute = $this->eavConfig->getAttribute('catalog_product', $attributeId);
+            $attribute = $this->eavConfig->getAttribute('catalog_product', $attributeCode);
 
             if (!$attribute || !$attribute->getAttributeId()) {
                 return null;
             }
 
-            // Skip global-scope attributes — they have no per-store storage.
             // getIsGlobal() lives on Magento\Catalog\Model\ResourceModel\Eav\Attribute;
-            // fall back to getData() which works on all DataObject-based attributes.
+            // getData() covers other DataObject-based attributes.
             $isGlobal = method_exists($attribute, 'getIsGlobal')
                 ? (int) $attribute->getIsGlobal()
                 : (int) $attribute->getData('is_global');
@@ -193,7 +228,6 @@ class ProductOverrideAggregator
                 return null;
             }
 
-            // Skip image / media / gallery attributes.
             if (in_array($attribute->getFrontendInput(), self::$skippedInputTypes, true)) {
                 return null;
             }
@@ -205,8 +239,9 @@ class ProductOverrideAggregator
     }
 
     /**
-     * Format a raw EAV value to a display string.
-     * Datetime values are cast to string; all others are cast directly.
+     * Returns plain text (option labels for select/multiselect); CellPopover escapes it.
+     *
+     * @param mixed $value
      */
     private function formatValue($value, AbstractAttribute $attribute): string
     {
@@ -214,7 +249,7 @@ class ProductOverrideAggregator
             return '';
         }
 
-        return (string) $value;
+        return $this->optionLabelResolver->resolve($attribute, (string) $value);
     }
 
     /**

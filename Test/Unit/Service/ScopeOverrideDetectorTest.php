@@ -46,6 +46,9 @@ class ScopeOverrideDetectorTest extends TestCase
     /** @var array<int, DataObject> */
     private $configRecords = [];
 
+    /** @var CollectionFactory&MockObject */
+    private $collectionFactory;
+
     protected function setUp(): void
     {
         $this->scopeConfig = $this->createMock(ScopeConfigInterface::class);
@@ -69,12 +72,14 @@ class ScopeOverrideDetectorTest extends TestCase
         $pool = $this->createMock(Pool::class);
         $pool->method('resolve')->willReturn($defaultFormatter);
         $collection = $this->createMock(Collection::class);
-        $collection->method('addFieldToFilter')->willReturnSelf();
+        $collection->method('addFieldToFilter')
+            ->with('scope', ['in' => ['websites', 'stores']])
+            ->willReturnSelf();
         $collection->method('getIterator')->willReturnCallback(function () {
             return new \ArrayIterator($this->configRecords);
         });
-        $collectionFactory = $this->createMock(CollectionFactory::class);
-        $collectionFactory->method('create')->willReturn($collection);
+        $this->collectionFactory = $this->createMock(CollectionFactory::class);
+        $this->collectionFactory->method('create')->willReturn($collection);
 
         $this->detector = new ScopeOverrideDetector(
             $this->scopeConfig,
@@ -83,7 +88,7 @@ class ScopeOverrideDetectorTest extends TestCase
             $this->request,
             $this->escaper,
             $pool,
-            $collectionFactory
+            $this->collectionFactory
         );
     }
 
@@ -102,7 +107,7 @@ class ScopeOverrideDetectorTest extends TestCase
 
     public function testDetectsWebsiteOverride(): void
     {
-        $this->stubExplicitValue('websites', 2, 'de_DE');
+        $this->stubExplicitValue('general/locale/code', 'websites', 2, 'de_DE');
         $this->stubRequestParams(null, null);
         $website = $this->createWebsite(2, 'main_website', 'Main Website');
         $this->websiteRepository->method('getList')->willReturn([$website]);
@@ -127,7 +132,7 @@ class ScopeOverrideDetectorTest extends TestCase
 
     public function testDetectsStoreOverrideWithinSameWebsite(): void
     {
-        $this->stubExplicitValue('stores', 5, 'processing');
+        $this->stubExplicitValue('payment/checkmo/order_status', 'stores', 5, 'processing');
         $this->stubRequestParams(null, null);
         $website = $this->createWebsite(2, 'main_website', 'Main Website');
         $store = $this->createStore(5, 'us_en', 'US Store', 2);
@@ -154,8 +159,8 @@ class ScopeOverrideDetectorTest extends TestCase
     public function testSkipsStoresOutsideCurrentWebsiteScope(): void
     {
         $this->stubRequestParams('main_website', null);
-        $this->stubExplicitValue('stores', 5, 'fr_FR');
-        $this->stubExplicitValue('stores', 6, 'de_DE');
+        $this->stubExplicitValue('general/locale/code', 'stores', 5, 'fr_FR');
+        $this->stubExplicitValue('general/locale/code', 'stores', 6, 'de_DE');
         $matchingStore = $this->createStore(5, 'us_en', 'US Store', 2);
         $otherStore = $this->createStore(6, 'de_de', 'DE Store', 3);
         $website = $this->createWebsite(2, 'main_website', 'Main Website');
@@ -193,7 +198,7 @@ class ScopeOverrideDetectorTest extends TestCase
 
     public function testArrayValuesAreFlaggedAsComplex(): void
     {
-        $this->stubExplicitValue('websites', 2, ['b' => 2]);
+        $this->stubExplicitValue('catalog/category/path/whatever', 'websites', 2, ['b' => 2]);
         $this->stubRequestParams(null, null);
         $website = $this->createWebsite(2, 'main_website', 'Main Website');
         $this->websiteRepository->method('getList')->willReturn([$website]);
@@ -215,8 +220,8 @@ class ScopeOverrideDetectorTest extends TestCase
 
     public function testGroupingByWebsite(): void
     {
-        $this->stubExplicitValue('stores', 5, 'b');
-        $this->stubExplicitValue('stores', 6, 'c');
+        $this->stubExplicitValue('x/y/z', 'stores', 5, 'b');
+        $this->stubExplicitValue('x/y/z', 'stores', 6, 'c');
         $this->stubRequestParams(null, null);
         $website2 = $this->createWebsite(2, 'main_website', 'Main Website');
         $store5 = $this->createStore(5, 'us_en', 'US Store', 2);
@@ -257,9 +262,33 @@ class ScopeOverrideDetectorTest extends TestCase
     }
 
     /** @param mixed $value */
-    private function stubExplicitValue(string $scope, int $scopeId, $value): void
+    public function testLoadsExplicitValuesOnceForAllPaths(): void
+    {
+        $this->collectionFactory->expects(self::once())->method('create');
+        $this->stubExplicitValue('general/locale/code', 'websites', 2, 'de_DE');
+        $this->stubExplicitValue('general/store_information/name', 'websites', 2, 'Shop DE');
+        $this->stubRequestParams(null, null);
+        $website = $this->createWebsite(2, 'main_website', 'Main Website');
+        $this->websiteRepository->method('getList')->willReturn([$website]);
+        $this->storeRepository->method('getList')->willReturn([]);
+        $this->scopeConfig->method('getValue')->willReturn('default');
+
+        $localeOverrides = $this->detector->getOverrides('general/locale/code')->getOverrides();
+        $nameOverrides = $this->detector->getOverrides('general/store_information/name')->getOverrides();
+        $untouchedOverrides = $this->detector->getOverrides('general/country/default')->getOverrides();
+
+        self::assertSame('de_DE', $localeOverrides[0]->getDisplayValue());
+        self::assertSame('Shop DE', $nameOverrides[0]->getDisplayValue());
+        self::assertSame([], $untouchedOverrides);
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private function stubExplicitValue(string $path, string $scope, int $scopeId, $value): void
     {
         $this->configRecords[] = new DataObject([
+            'path' => $path,
             'scope' => $scope,
             'scope_id' => $scopeId,
             'value' => $value,

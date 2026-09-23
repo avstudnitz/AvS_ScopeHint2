@@ -94,11 +94,11 @@ class OverrideSourcePoolTest extends TestCase
         $source->method('supports')->willReturn(true);
         $source->expects(self::once())
             ->method('getOverrides')
-            ->with($entityType, $entityId, $fieldMeta)
+            ->with($entityType, $entityId, $fieldMeta, 3)
             ->willReturn($expected);
 
         $pool = new OverrideSourcePool([$source]);
-        $result = $pool->resolve($entityType, $entityId, $fieldMeta);
+        $result = $pool->resolve($entityType, $entityId, $fieldMeta, 3);
 
         self::assertSame($expected, $result);
     }

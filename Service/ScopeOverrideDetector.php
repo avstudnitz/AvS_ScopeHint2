@@ -42,6 +42,9 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
     /** @var CollectionFactory */
     private $configCollectionFactory;
 
+    /** @var array<string, array<string, array<int, mixed>>>|null */
+    private $explicitValuesByPath;
+
     public function __construct(
         ScopeConfigInterface $scopeConfig,
         WebsiteRepositoryInterface $websiteRepository,
@@ -144,26 +147,33 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
      * inherited values, which would incorrectly report every child store when
      * only its website has an override.
      *
+     * All website/store rows are loaded in one query per request: the plugin runs
+     * once per rendered field, and a per-path query cannot use the
+     * (scope, scope_id, path) unique index.
+     *
      * @return array<string, array<int, mixed>>
      */
     private function getExplicitValues(string $path): array
     {
-        $values = [
+        if ($this->explicitValuesByPath === null) {
+            $this->explicitValuesByPath = [];
+            $collection = $this->configCollectionFactory->create();
+            $collection->addFieldToFilter(
+                'scope',
+                ['in' => [ScopeOverrideInterface::SCOPE_TYPE_WEBSITES, ScopeOverrideInterface::SCOPE_TYPE_STORES]]
+            );
+
+            foreach ($collection as $configValue) {
+                $scope = (string) $configValue->getScope();
+                $this->explicitValuesByPath[(string) $configValue->getPath()][$scope][(int) $configValue->getScopeId()]
+                    = $configValue->getValue();
+            }
+        }
+
+        return ($this->explicitValuesByPath[$path] ?? []) + [
             ScopeOverrideInterface::SCOPE_TYPE_WEBSITES => [],
             ScopeOverrideInterface::SCOPE_TYPE_STORES => [],
         ];
-        $collection = $this->configCollectionFactory->create();
-        $collection->addFieldToFilter('path', $path);
-
-        foreach ($collection as $configValue) {
-            $scope = (string) $configValue->getScope();
-            if (!isset($values[$scope])) {
-                continue;
-            }
-            $values[$scope][(int) $configValue->getScopeId()] = $configValue->getValue();
-        }
-
-        return $values;
     }
 
     /**

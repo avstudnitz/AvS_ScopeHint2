@@ -14,15 +14,21 @@ interface OverrideSourceInterface
     // Inspect $fieldMeta (the arguments.data.config slice) — no DB calls here.
     public function supports(string $entityType, array $fieldMeta): bool;
 
-    // Return all store-level overrides for the field.
-    // Called only when supports() returned true for the same arguments.
+    // Return all store-level overrides for the field, relative to the value in
+    // $storeId (the store view being edited, 0 = default scope). Exclude $storeId
+    // itself. Called only when supports() returned true for the same arguments.
     public function getOverrides(
         string $entityType,
         int    $entityId,
-        array  $fieldMeta
+        array  $fieldMeta,
+        int    $storeId = 0
     ): \AvS\ScopeHint\Api\Data\OverrideResultInterface;
 }
 ```
+
+Popovers output `ScopeOverrideInterface::getDisplayValue()` without further
+escaping, so sources must return an HTML-safe display value (escape it with
+`Magento\Framework\Escaper::escapeHtml()`). The raw value is passed separately.
 
 ## Worked example — Hyva SeoSuite synthetic fields
 
@@ -44,6 +50,7 @@ use AvS\ScopeHint\Model\Data\OverrideResult;
 use AvS\ScopeHint\Model\Data\ScopeOverride;
 use AvS\ScopeHint\Api\Data\ScopeOverrideInterface;
 use Hyva\SeoSuite\Api\SeoMetadataRepositoryInterface;
+use Magento\Framework\Escaper;
 use Magento\Store\Model\StoreManagerInterface;
 
 class SeoMetadataOverrideSource implements OverrideSourceInterface
@@ -56,13 +63,16 @@ class SeoMetadataOverrideSource implements OverrideSourceInterface
 
     private $repository;
     private $storeManager;
+    private $escaper;
 
     public function __construct(
         SeoMetadataRepositoryInterface $repository,
-        StoreManagerInterface $storeManager
+        StoreManagerInterface $storeManager,
+        Escaper $escaper
     ) {
         $this->repository   = $repository;
         $this->storeManager = $storeManager;
+        $this->escaper      = $escaper;
     }
 
     public function supports(string $entityType, array $fieldMeta): bool
@@ -76,17 +86,21 @@ class SeoMetadataOverrideSource implements OverrideSourceInterface
     public function getOverrides(
         string $entityType,
         int    $entityId,
-        array  $fieldMeta
+        array  $fieldMeta,
+        int    $storeId = 0
     ): OverrideResultInterface {
         $field        = $fieldMeta['dataScope'];
-        $defaultValue = $this->repository->getForStore($entityId, $field, 0);
+        $currentValue = $this->repository->getForStore($entityId, $field, $storeId);
         $overrides    = [];
 
         foreach ($this->storeManager->getStores(false) as $store) {
-            $storeId    = (int) $store->getId();
-            $storeValue = $this->repository->getForStore($entityId, $field, $storeId);
+            $otherStoreId = (int) $store->getId();
+            if ($otherStoreId === $storeId) {
+                continue;
+            }
 
-            if ((string) $storeValue === (string) $defaultValue) {
+            $storeValue = $this->repository->getForStore($entityId, $field, $otherStoreId);
+            if ((string) $storeValue === (string) $currentValue) {
                 continue;
             }
 
@@ -95,10 +109,10 @@ class SeoMetadataOverrideSource implements OverrideSourceInterface
                 ScopeOverrideInterface::SCOPE_TYPE_STORES,
                 (string) $store->getCode(),
                 (string) $store->getName(),
-                $storeId,
+                $otherStoreId,
                 (string) $website->getCode(),
                 $storeValue,
-                (string) $storeValue
+                $this->escaper->escapeHtml((string) $storeValue)
             );
         }
 

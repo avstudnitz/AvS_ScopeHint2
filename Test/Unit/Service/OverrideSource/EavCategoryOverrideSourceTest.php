@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AvS\ScopeHint\Test\Unit\Service\OverrideSource;
 
 use AvS\ScopeHint\Api\Data\ScopeOverrideInterface;
+use AvS\ScopeHint\Service\EavOptionLabelResolver;
 use AvS\ScopeHint\Service\OverrideSource\EavCategoryOverrideSource;
 use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Magento\Catalog\Api\Data\CategoryInterface;
@@ -67,7 +68,8 @@ class EavCategoryOverrideSourceTest extends TestCase
             $this->scopeConfig,
             $this->eavConfig,
             $this->escaper,
-            $this->logger
+            $this->logger,
+            new EavOptionLabelResolver()
         );
     }
 
@@ -170,6 +172,25 @@ class EavCategoryOverrideSourceTest extends TestCase
         self::assertSame('de', $overrides[0]->getScopeCode());
     }
 
+    public function testGetOverridesComparesAgainstEditedStoreAndExcludesIt(): void
+    {
+        $this->storeManager->method('getStores')->willReturn([
+            $this->createStore(1, 'en', 'English Store', 1),
+            $this->createStore(2, 'de', 'German Store', 1),
+        ]);
+        $this->storeManager->method('getWebsite')->willReturn($this->createWebsite(1, 'base'));
+        $this->categoryRepository->method('get')->willReturnMap([
+            [10, 1, $this->createCategory(10, 'name', 'Shoes')],
+            [10, 2, $this->createCategory(10, 'name', 'Schuhe')],
+        ]);
+
+        $overrides = $this->source->getOverrides('category', 10, ['code' => 'name'], 2)->getOverrides();
+
+        self::assertCount(1, $overrides);
+        self::assertSame('en', $overrides[0]->getScopeCode());
+        self::assertSame('Shoes', $overrides[0]->getDisplayValue());
+    }
+
     public function testGetOverridesSkipsUnchangedStoreValue(): void
     {
         $store = $this->createStore(2, 'de', 'German Store', 1);
@@ -206,7 +227,8 @@ class EavCategoryOverrideSourceTest extends TestCase
             $scopeConfig,
             $this->eavConfig,
             $this->escaper,
-            $this->logger
+            $this->logger,
+            new EavOptionLabelResolver()
         );
 
         $result = $source->getOverrides('category', 1, ['code' => 'name']);

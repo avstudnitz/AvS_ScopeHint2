@@ -39,9 +39,13 @@ class PageBuilderProductOverrideSource implements OverrideSourceInterface
             && $this->formatter->supports($fieldMeta);
     }
 
-    public function getOverrides(string $entityType, int $entityId, array $fieldMeta): OverrideResultInterface
-    {
-        $result = $this->eavProductSource->getOverrides($entityType, $entityId, $fieldMeta);
+    public function getOverrides(
+        string $entityType,
+        int $entityId,
+        array $fieldMeta,
+        int $storeId = 0
+    ): OverrideResultInterface {
+        $result = $this->eavProductSource->getOverrides($entityType, $entityId, $fieldMeta, $storeId);
         $formatted = [];
 
         foreach ($result->getOverrides() as $override) {

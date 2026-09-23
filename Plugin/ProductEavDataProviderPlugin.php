@@ -83,7 +83,12 @@ class ProductEavDataProviderPlugin
 
         $productId = (int) $product->getId();
         $fieldMeta = $result['arguments']['data']['config'];
-        $overrides = $this->overrideSourcePool->resolve('product', $productId, $fieldMeta);
+        $overrides = $this->overrideSourcePool->resolve(
+            'product',
+            $productId,
+            $fieldMeta,
+            (int) $product->getStoreId()
+        );
 
         if ($overrides === null || $overrides->isEmpty()) {
             return $result;

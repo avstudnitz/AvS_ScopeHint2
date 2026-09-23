@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace AvS\ScopeHint\Test\Unit\Service;
 
+use AvS\ScopeHint\Service\EavOptionLabelResolver;
 use AvS\ScopeHint\Service\ProductOverrideAggregator;
 use Magento\Catalog\Model\ResourceModel\Eav\Attribute as CatalogAttribute;
 use Magento\Eav\Model\Config as EavConfig;
+use Magento\Eav\Model\Entity\Attribute\Source\AbstractSource;
 use Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\DB\Adapter\AdapterInterface;
@@ -48,7 +50,8 @@ class ProductOverrideAggregatorTest extends TestCase
             $this->resource,
             $this->eavConfig,
             $this->storeManager,
-            $metadataPool
+            $metadataPool,
+            new EavOptionLabelResolver()
         );
     }
 
@@ -56,144 +59,104 @@ class ProductOverrideAggregatorTest extends TestCase
     {
         $this->resource->expects($this->never())->method('getConnection');
 
-        $result = $this->aggregator->getOverrides([]);
-
-        $this->assertSame([], $result);
+        $this->assertSame([], $this->aggregator->getOverrides([], ['name']));
     }
 
     public function testReturnsOverrideForSingleVarcharAttribute(): void
     {
-        $store   = $this->buildStore(2, 'store_en', 'English Store', 'website_base');
-        $website = $this->createMock(WebsiteInterface::class);
-        $website->method('getCode')->willReturn('website_base');
-
-        $this->storeManager->method('getStores')->willReturn([$store]);
-        $this->storeManager->method('getWebsite')->willReturn($website);
-
-        $attribute = $this->buildAttribute('name', ScopedAttributeInterface::SCOPE_STORE, 'text');
-
-        $this->eavConfig->method('getAttribute')
-            ->with('catalog_product', 42)
-            ->willReturn($attribute);
-
-        $this->setupConnection([
-            'catalog_product_entity_varchar' => [
-                ['entity_id' => '1', 'attribute_id' => '42', 'store_id' => '2', 'value' => 'Overridden Name'],
-            ],
-            'catalog_product_entity_int'      => [],
-            'catalog_product_entity_decimal'  => [],
-            'catalog_product_entity_text'     => [],
-            'catalog_product_entity_datetime' => [],
+        $this->stubStores();
+        $this->stubAttributes([$this->buildAttribute('name', 42, 'varchar', 'text')]);
+        $select = $this->setupConnection([
+            ['entity_id' => '1', 'attribute_id' => '42', 'store_id' => '2', 'value' => 'Overridden Name'],
         ]);
 
-        $result = $this->aggregator->getOverrides([1]);
+        $select->expects($this->once())->method('from')
+            ->with(['t' => 'catalog_product_entity_varchar'], $this->anything());
 
-        $this->assertArrayHasKey(1, $result);
-        $this->assertArrayHasKey('name', $result[1]);
-        $this->assertArrayHasKey(2, $result[1]['name']);
+        $result = $this->aggregator->getOverrides([1], ['entity_id', 'name']);
+
         $this->assertSame('Overridden Name', $result[1]['name'][2]['displayValue']);
         $this->assertSame('English Store', $result[1]['name'][2]['storeName']);
         $this->assertSame('store_en', $result[1]['name'][2]['storeCode']);
         $this->assertSame('website_base', $result[1]['name'][2]['websiteCode']);
     }
 
-    public function testImageAttributeIsFiltered(): void
+    public function testQueriesOnlyRequestedAttributesWithLeftJoinOnAdminRow(): void
     {
-        $store   = $this->buildStore(2, 'store_en', 'English Store', 'website_base');
-        $website = $this->createMock(WebsiteInterface::class);
-        $website->method('getCode')->willReturn('website_base');
+        $this->stubStores();
+        $this->stubAttributes([$this->buildAttribute('name', 42, 'varchar', 'text')]);
+        $select = $this->setupConnection([]);
 
-        $this->storeManager->method('getStores')->willReturn([$store]);
-        $this->storeManager->method('getWebsite')->willReturn($website);
+        $select->expects($this->once())->method('joinLeft')
+            ->with(['admin' => 'catalog_product_entity_varchar'], $this->anything(), []);
+        $whereClauses = [];
+        $select->method('where')->willReturnCallback(
+            function (string $condition, $value = null) use (&$whereClauses, $select) {
+                $whereClauses[$condition] = $value;
 
-        // attribute with frontend_input = image
-        $attribute = $this->buildAttribute('image', ScopedAttributeInterface::SCOPE_STORE, 'image');
-
-        $this->eavConfig->method('getAttribute')->willReturn($attribute);
-
-        $this->setupConnection([
-            'catalog_product_entity_varchar' => [
-                ['entity_id' => '1', 'attribute_id' => '10', 'store_id' => '2', 'value' => '/i/m/img.jpg'],
-            ],
-            'catalog_product_entity_int'      => [],
-            'catalog_product_entity_decimal'  => [],
-            'catalog_product_entity_text'     => [],
-            'catalog_product_entity_datetime' => [],
-        ]);
-
-        $result = $this->aggregator->getOverrides([1]);
-
-        // image attribute must be silently skipped → no overrides
-        $this->assertEmpty($result);
-    }
-
-    public function testGlobalScopeAttributeIsFiltered(): void
-    {
-        $store   = $this->buildStore(2, 'store_en', 'English Store', 'website_base');
-        $website = $this->createMock(WebsiteInterface::class);
-        $website->method('getCode')->willReturn('website_base');
-
-        $this->storeManager->method('getStores')->willReturn([$store]);
-        $this->storeManager->method('getWebsite')->willReturn($website);
-
-        // global-scope attribute
-        $attribute = $this->buildAttribute('sku', ScopedAttributeInterface::SCOPE_GLOBAL, 'text');
-
-        $this->eavConfig->method('getAttribute')->willReturn($attribute);
-
-        $this->setupConnection([
-            'catalog_product_entity_varchar' => [
-                ['entity_id' => '1', 'attribute_id' => '5', 'store_id' => '2', 'value' => 'SKU-002'],
-            ],
-            'catalog_product_entity_int'      => [],
-            'catalog_product_entity_decimal'  => [],
-            'catalog_product_entity_text'     => [],
-            'catalog_product_entity_datetime' => [],
-        ]);
-
-        $result = $this->aggregator->getOverrides([1]);
-
-        // global attribute must be silently skipped → no overrides
-        $this->assertEmpty($result);
-    }
-
-    public function testCacheHitOnSecondCallWithSameIds(): void
-    {
-        $store   = $this->buildStore(2, 'store_en', 'English Store', 'website_base');
-        $website = $this->createMock(WebsiteInterface::class);
-        $website->method('getCode')->willReturn('website_base');
-
-        $this->storeManager->method('getStores')->willReturn([$store]);
-        $this->storeManager->method('getWebsite')->willReturn($website);
-
-        $attribute = $this->buildAttribute('name', ScopedAttributeInterface::SCOPE_STORE, 'text');
-        $this->eavConfig->method('getAttribute')->willReturn($attribute);
-
-        $connection = $this->createMock(AdapterInterface::class);
-        $this->resource->method('getConnection')->willReturn($connection);
-        $this->resource->method('getTableName')->willReturnCallback(
-            static function (string $table) {
-                return $table;
+                return $select;
             }
         );
 
-        $select = $this->createMock(Select::class);
-        $select->method('from')->willReturnSelf();
-        $select->method('joinInner')->willReturnSelf();
-        $select->method('where')->willReturnSelf();
+        $this->aggregator->getOverrides([1], ['name']);
 
-        $connection->method('select')->willReturn($select);
+        $this->assertSame([42], $whereClauses['t.attribute_id IN (?)']);
+    }
 
-        // fetchAll should only be called 5 times (one per backend type) on the first call.
-        $connection->expects($this->exactly(5))
-            ->method('fetchAll')
-            ->willReturn([]);
+    public function testSkipsQueryWhenNoRequestedCodeIsAScopedAttribute(): void
+    {
+        $this->stubAttributes([
+            $this->buildAttribute('image', 10, 'varchar', 'image'),
+            $this->buildAttribute('sku', 5, 'static', 'text', ScopedAttributeInterface::SCOPE_GLOBAL),
+            $this->buildAttribute('weight', 6, 'decimal', 'weight', ScopedAttributeInterface::SCOPE_GLOBAL),
+        ]);
+        $this->resource->expects($this->never())->method('getConnection');
 
-        $this->aggregator->getOverrides([1]);
-        // Second call with same ids must hit cache and not invoke fetchAll again.
-        $result = $this->aggregator->getOverrides([1]);
+        $this->assertSame([], $this->aggregator->getOverrides([1], ['entity_id', 'image', 'sku', 'weight', 'qty']));
+    }
 
-        $this->assertSame([], $result);
+    public function testResolvesSelectOptionLabel(): void
+    {
+        $this->stubStores();
+        $status = $this->buildAttribute('status', 97, 'int', 'select');
+        $status->method('usesSource')->willReturn(true);
+        $status->method('getSource')->willReturn($this->buildSource(['2' => 'Disabled']));
+        $this->stubAttributes([$status]);
+        $this->setupConnection([
+            ['entity_id' => '1', 'attribute_id' => '97', 'store_id' => '2', 'value' => '2'],
+        ]);
+
+        $result = $this->aggregator->getOverrides([1], ['status']);
+
+        $this->assertSame('Disabled', $result[1]['status'][2]['displayValue']);
+    }
+
+    public function testResolvesMultiselectOptionLabels(): void
+    {
+        $this->stubStores();
+        $material = $this->buildAttribute('material', 150, 'varchar', 'multiselect');
+        $material->method('usesSource')->willReturn(true);
+        $material->method('getSource')->willReturn($this->buildSource(['4,5' => ['Cotton', 'Wool']]));
+        $this->stubAttributes([$material]);
+        $this->setupConnection([
+            ['entity_id' => '1', 'attribute_id' => '150', 'store_id' => '2', 'value' => '4,5'],
+        ]);
+
+        $result = $this->aggregator->getOverrides([1], ['material']);
+
+        $this->assertSame('Cotton, Wool', $result[1]['material'][2]['displayValue']);
+    }
+
+    public function testCacheHitOnSecondCallWithSameIdsAndCodes(): void
+    {
+        $this->stubStores();
+        $this->stubAttributes([$this->buildAttribute('name', 42, 'varchar', 'text')]);
+        $this->setupConnection([]);
+        $this->resource->expects($this->once())->method('getConnection');
+
+        $this->aggregator->getOverrides([1], ['name']);
+
+        $this->assertSame([], $this->aggregator->getOverrides([1], ['name']));
     }
 
     // ------------------------------------------------------------------
@@ -201,26 +164,68 @@ class ProductOverrideAggregatorTest extends TestCase
     // ------------------------------------------------------------------
 
     /**
-     * @param array<string, array<int, array<string, string>>> $tableRows table name => rows
+     * @param array<int, array<string, string>> $rows
+     * @return Select&MockObject
      */
-    private function setupConnection(array $tableRows): void
+    private function setupConnection(array $rows): Select
     {
         $connection = $this->createMock(AdapterInterface::class);
         $this->resource->method('getConnection')->willReturn($connection);
-        $this->resource->method('getTableName')->willReturnCallback(
-            static function (string $table) {
-                return $table;
-            }
-        );
+        $this->resource->method('getTableName')->willReturnArgument(0);
 
         $select = $this->createMock(Select::class);
         $select->method('from')->willReturnSelf();
         $select->method('joinInner')->willReturnSelf();
+        $select->method('joinLeft')->willReturnSelf();
         $select->method('where')->willReturnSelf();
         $connection->method('select')->willReturn($select);
+        $connection->method('fetchAll')->willReturn($rows);
 
-        $fetchSequence = array_values($tableRows);
-        $connection->method('fetchAll')->willReturnOnConsecutiveCalls(...$fetchSequence);
+        return $select;
+    }
+
+    private function stubStores(): void
+    {
+        $website = $this->createMock(WebsiteInterface::class);
+        $website->method('getCode')->willReturn('website_base');
+        $this->storeManager->method('getStores')->willReturn([
+            $this->buildStore(2, 'store_en', 'English Store', 'website_base'),
+        ]);
+        $this->storeManager->method('getWebsite')->willReturn($website);
+    }
+
+    /**
+     * @param CatalogAttribute[] $attributes
+     */
+    private function stubAttributes(array $attributes): void
+    {
+        $attributesByCode = [];
+        foreach ($attributes as $attribute) {
+            $attributesByCode[$attribute->getAttributeCode()] = $attribute;
+        }
+        $unknownAttribute = $this->createMock(CatalogAttribute::class);
+        $unknownAttribute->method('getAttributeId')->willReturn(null);
+
+        $this->eavConfig->method('getAttribute')->willReturnCallback(
+            static function (string $entityType, string $code) use ($attributesByCode, $unknownAttribute) {
+                return $attributesByCode[$code] ?? $unknownAttribute;
+            }
+        );
+    }
+
+    /**
+     * @param array<string, string|string[]> $labelsByValue
+     */
+    private function buildSource(array $labelsByValue): AbstractSource
+    {
+        $source = $this->createMock(AbstractSource::class);
+        $source->method('getOptionText')->willReturnCallback(
+            static function ($value) use ($labelsByValue) {
+                return $labelsByValue[$value] ?? false;
+            }
+        );
+
+        return $source;
     }
 
     private function buildStore(int $id, string $code, string $name, string $websiteCode): StoreInterface
@@ -234,11 +239,17 @@ class ProductOverrideAggregatorTest extends TestCase
         return $store;
     }
 
-    private function buildAttribute(string $code, int $scope, string $frontendInput): CatalogAttribute
-    {
+    private function buildAttribute(
+        string $code,
+        int $attributeId,
+        string $backendType,
+        string $frontendInput,
+        int $scope = ScopedAttributeInterface::SCOPE_STORE
+    ): CatalogAttribute {
         $attribute = $this->createMock(CatalogAttribute::class);
-        $attribute->method('getAttributeId')->willReturn('42');
+        $attribute->method('getAttributeId')->willReturn((string) $attributeId);
         $attribute->method('getAttributeCode')->willReturn($code);
+        $attribute->method('getBackendType')->willReturn($backendType);
         $attribute->method('getIsGlobal')->willReturn((string) $scope);
         $attribute->method('getFrontendInput')->willReturn($frontendInput);
 

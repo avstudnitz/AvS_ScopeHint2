@@ -17,9 +17,13 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
  * formatting.
  *
  * A dedicated cell template is selected by CatalogColumnFactoryPlugin for
- * dynamic EAV columns and by product_listing.xml for Magento's static Name
- * column. It text-binds native values and HTML-binds only this trusted markup.
+ * dynamic EAV columns and by product_listing.xml for Magento's static Name,
+ * Visibility and Status columns. It text-binds native values and HTML-binds
+ * only this trusted markup.
  *
+ * Grid columns register their field through addField(); those codes decide
+ * which attributes are scanned. Row keys alone are not enough: an attribute
+ * with no default-scope value is missing from the row data.
  */
 class ProductGridDataProviderPlugin
 {
@@ -34,6 +38,9 @@ class ProductGridDataProviderPlugin
     /** @var ScopeConfigInterface */
     private $scopeConfig;
 
+    /** @var array<int, array<string, true>> */
+    private $gridFieldCodesByProvider = [];
+
     public function __construct(
         ProductOverrideAggregator $aggregator,
         CellPopover $cellPopover,
@@ -42,6 +49,21 @@ class ProductGridDataProviderPlugin
         $this->aggregator  = $aggregator;
         $this->cellPopover = $cellPopover;
         $this->scopeConfig = $scopeConfig;
+    }
+
+    /**
+     * @param ProductDataProvider $subject
+     * @param string|string[] $field
+     * @param string|null $alias
+     * @return null
+     */
+    public function beforeAddField(ProductDataProvider $subject, $field, $alias = null)
+    {
+        foreach ((array) $field as $fieldCode) {
+            $this->gridFieldCodesByProvider[spl_object_id($subject)][(string) $fieldCode] = true;
+        }
+
+        return null;
     }
 
     /**
@@ -62,10 +84,14 @@ class ProductGridDataProviderPlugin
         }
 
         $productIds = [];
+        $fieldCodes = $this->gridFieldCodesByProvider[spl_object_id($subject)] ?? [];
 
         foreach ($result['items'] as $item) {
             if (isset($item['entity_id'])) {
                 $productIds[] = (int) $item['entity_id'];
+            }
+            foreach (array_keys($item) as $fieldCode) {
+                $fieldCodes[(string) $fieldCode] = true;
             }
         }
 
@@ -73,7 +99,7 @@ class ProductGridDataProviderPlugin
             return $result;
         }
 
-        $overridesMap = $this->aggregator->getOverrides($productIds);
+        $overridesMap = $this->aggregator->getOverrides($productIds, array_keys($fieldCodes));
 
         if (empty($overridesMap)) {
             return $result;
@@ -89,8 +115,7 @@ class ProductGridDataProviderPlugin
             $productOverrides = $overridesMap[$entityId];
 
             foreach ($productOverrides as $attributeCode => $storeOverrides) {
-                // Only modify columns that already exist in the item data.
-                if (!array_key_exists($attributeCode, $item)) {
+                if (!isset($fieldCodes[$attributeCode])) {
                     continue;
                 }
 

@@ -7,6 +7,7 @@ namespace AvS\ScopeHint\Plugin;
 use AvS\ScopeHint\Block\Adminhtml\System\Config\Popover;
 use AvS\ScopeHint\Service\ScopeOverrideDetectorInterface;
 use Magento\Config\Block\System\Config\Form\Field as FieldBlock;
+use Magento\Config\Block\System\Config\Form\Field\FieldArray\AbstractFieldArray;
 use Magento\Config\Model\Config\Structure;
 use Magento\Config\Model\Config\Structure\Element\Field as StructureField;
 use Magento\Framework\App\Config\ScopeConfigInterface;
@@ -28,6 +29,9 @@ class ConfigBlockFieldPlugin
 
     /** @var Structure */
     private $structure;
+
+    /** @var array<string, string> */
+    private $valueCellHtmlByElementId = [];
 
     public function __construct(
         ScopeOverrideDetectorInterface $detector,
@@ -78,10 +82,46 @@ class ConfigBlockFieldPlugin
         $block->setFieldHtmlId('scopehint-panel-' . preg_replace('/[^a-zA-Z0-9_-]/', '-', $element->getHtmlId()));
         $html = $block->toHtml();
 
-        if ($html !== '') {
+        if ($html === '') {
+            return [$element];
+        }
+
+        // Field-array renderers output their own template and never print after_element_html.
+        if ($subject instanceof AbstractFieldArray) {
+            $this->valueCellHtmlByElementId[(string) $element->getHtmlId()] = $html;
+        } else {
             $element->setData('after_element_html', (string) $element->getData('after_element_html') . $html);
         }
 
         return [$element];
+    }
+
+    /**
+     * @param FieldBlock $subject
+     * @param string $result
+     * @param AbstractElement $element
+     * @return string
+     */
+    public function afterRender(FieldBlock $subject, $result, AbstractElement $element)
+    {
+        $elementId = (string) $element->getHtmlId();
+
+        if (!isset($this->valueCellHtmlByElementId[$elementId]) || !is_string($result)) {
+            return $result;
+        }
+
+        $popoverHtml = $this->valueCellHtmlByElementId[$elementId];
+        unset($this->valueCellHtmlByElementId[$elementId]);
+
+        $rendered = preg_replace_callback(
+            '/<td class="value[^"]*">/',
+            static function (array $match) use ($popoverHtml) {
+                return $match[0] . $popoverHtml;
+            },
+            $result,
+            1
+        );
+
+        return $rendered ?? $result;
     }
 }

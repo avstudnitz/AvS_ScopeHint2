@@ -38,7 +38,15 @@ interface OverrideSourceInterface
      * @param string $entityType Either "product" or "category".
      * @param int    $entityId   The entity's primary key (product or category ID).
      * @param array  $fieldMeta  The `arguments.data.config` slice of the field's UI meta.
-     * @return OverrideResultInterface
+     * @param int    $storeId    Store view being edited (0 = default scope). Overrides are
+     *                           relative to the value in this store, which is excluded.
+     * @return OverrideResultInterface Each ScopeOverrideInterface::getDisplayValue() must be
+     *                                 HTML-safe: popovers output it without further escaping.
      */
-    public function getOverrides(string $entityType, int $entityId, array $fieldMeta): OverrideResultInterface;
+    public function getOverrides(
+        string $entityType,
+        int $entityId,
+        array $fieldMeta,
+        int $storeId = 0
+    ): OverrideResultInterface;
 }

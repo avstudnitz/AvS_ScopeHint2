@@ -9,6 +9,7 @@ use AvS\ScopeHint\Api\Data\ScopeOverrideInterface;
 use AvS\ScopeHint\Api\OverrideSourceInterface;
 use AvS\ScopeHint\Model\Data\OverrideResult;
 use AvS\ScopeHint\Model\Data\ScopeOverride;
+use AvS\ScopeHint\Service\EavOptionLabelResolver;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Escaper;
@@ -52,6 +53,9 @@ class EavProductOverrideSource implements OverrideSourceInterface
     /** @var LoggerInterface */
     private $logger;
 
+    /** @var EavOptionLabelResolver */
+    private $optionLabelResolver;
+
     /**
      * Per-request cache of product objects keyed by "productId_storeId".
      *
@@ -71,13 +75,15 @@ class EavProductOverrideSource implements OverrideSourceInterface
         StoreManagerInterface $storeManager,
         ScopeConfigInterface $scopeConfig,
         Escaper $escaper,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        EavOptionLabelResolver $optionLabelResolver
     ) {
         $this->productRepository = $productRepository;
         $this->storeManager = $storeManager;
         $this->scopeConfig = $scopeConfig;
         $this->escaper = $escaper;
         $this->logger = $logger;
+        $this->optionLabelResolver = $optionLabelResolver;
     }
 
     /**
@@ -110,10 +116,15 @@ class EavProductOverrideSource implements OverrideSourceInterface
      * @param string $entityType
      * @param int    $entityId
      * @param array  $fieldMeta
+     * @param int    $storeId
      * @return OverrideResultInterface
      */
-    public function getOverrides(string $entityType, int $entityId, array $fieldMeta): OverrideResultInterface
-    {
+    public function getOverrides(
+        string $entityType,
+        int $entityId,
+        array $fieldMeta,
+        int $storeId = 0
+    ): OverrideResultInterface {
         $stores = $this->getStores();
 
         $maxStores = (int) $this->scopeConfig->getValue(self::XML_PATH_MAX_STORES);
@@ -135,7 +146,7 @@ class EavProductOverrideSource implements OverrideSourceInterface
         }
 
         $attributeCode = (string) $fieldMeta['code'];
-        $currentProduct = $this->loadProduct($entityId, 0);
+        $currentProduct = $this->loadProduct($entityId, $storeId);
 
         if ($currentProduct === null) {
             return new OverrideResult([]);
@@ -145,8 +156,13 @@ class EavProductOverrideSource implements OverrideSourceInterface
         $overrides = [];
 
         foreach ($stores as $store) {
-            $storeId = (int) $store->getId();
-            $productInStore = $this->loadProduct($entityId, $storeId);
+            $otherStoreId = (int) $store->getId();
+
+            if ($otherStoreId === $storeId) {
+                continue;
+            }
+
+            $productInStore = $this->loadProduct($entityId, $otherStoreId);
 
             if ($productInStore === null) {
                 continue;
@@ -165,7 +181,7 @@ class EavProductOverrideSource implements OverrideSourceInterface
                 ScopeOverrideInterface::SCOPE_TYPE_STORES,
                 (string) $store->getCode(),
                 (string) $store->getName(),
-                $storeId,
+                $otherStoreId,
                 $websiteCode,
                 $storeValue,
                 $displayValue
@@ -205,21 +221,16 @@ class EavProductOverrideSource implements OverrideSourceInterface
             $valueAsString = (string) $value;
         }
 
-        // Attempt label resolution for select attributes via the product resource
         if ($valueAsString !== '') {
             try {
-                /** @var \Magento\Catalog\Model\Product $product */
                 /** @var \Magento\Catalog\Model\ResourceModel\Product $productResource */
                 $productResource = $product->getResource();
                 $attribute = $productResource->getAttribute($attributeCode);
-                if ($attribute && $attribute->usesSource()) {
-                    $optionText = $attribute->getSource()->getOptionText($valueAsString);
-                    if ($optionText !== false && $optionText !== null) {
-                        $valueAsString = (string) $optionText;
-                    }
+                if ($attribute) {
+                    $valueAsString = $this->optionLabelResolver->resolve($attribute, $valueAsString);
                 }
             } catch (\Throwable $ex) {
-                // fall through — return raw value
+                // Attribute lookup failed: show the raw value.
             }
         }
 

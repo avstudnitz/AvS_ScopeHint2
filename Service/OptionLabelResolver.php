@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace AvS\ScopeHint\Service;
 
 use Magento\Config\Model\Config\Structure\Element\Field as Subject;
-use Magento\Framework\ObjectManagerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -14,31 +13,24 @@ use Psr\Log\LoggerInterface;
  * For multiselect fields a comma-separated value is split and each part resolved
  * individually. For non-select fields the value is returned unchanged.
  *
- * Resolution order:
- * 1. Inline options from system.xml (<options> element)
- * 2. Source model (source_model attribute on the field)
- * 3. Raw value unchanged
+ * Options come from Field::getOptions(), which covers both inline <options> and
+ * source_model (instantiated by core through Config\SourceFactory).
  */
 class OptionLabelResolver
 {
-    /** @var ObjectManagerInterface */
-    private $objectManager;
-
     /** @var LoggerInterface */
     private $logger;
 
     /**
-     * Cache of resolved option arrays keyed by source-model FQCN.
+     * Keyed by field path: Field instances are flyweights re-populated per field,
+     * so the object itself cannot be the cache key.
      *
-     * @var array<string, array>
+     * @var array<string, array<int|string, mixed>>
      */
-    private $sourceModelOptionsCache = [];
+    private $optionsByFieldPath = [];
 
-    public function __construct(
-        ObjectManagerInterface $objectManager,
-        LoggerInterface $logger
-    ) {
-        $this->objectManager = $objectManager;
+    public function __construct(LoggerInterface $logger)
+    {
         $this->logger = $logger;
     }
 
@@ -60,22 +52,15 @@ class OptionLabelResolver
                 },
                 explode(',', $value)
             );
+
             return implode(', ', $parts);
         }
 
-        if ($field->hasOptions()) {
-            return $this->matchOption($field->getOptions(), $value);
+        if (!$field->hasOptions()) {
+            return $value;
         }
 
-        $sourceModel = $field->getData('source_model');
-        if (is_string($sourceModel) && $sourceModel !== '') {
-            $options = $this->getSourceModelOptions($sourceModel);
-            if ($options !== null) {
-                return $this->matchOption($options, $value);
-            }
-        }
-
-        return $value;
+        return $this->matchOption($this->getOptions($field), $value);
     }
 
     /**
@@ -84,7 +69,19 @@ class OptionLabelResolver
     private function matchOption(array $options, string $value): string
     {
         foreach ($options as $option) {
-            if (is_array($option) && isset($option['value']) && (string) $option['value'] === $value) {
+            if (!is_array($option) || !array_key_exists('value', $option)) {
+                continue;
+            }
+
+            if (is_array($option['value'])) {
+                $label = $this->matchOption($option['value'], $value);
+                if ($label !== $value) {
+                    return $label;
+                }
+                continue;
+            }
+
+            if ((string) $option['value'] === $value) {
                 return (string) ($option['label'] ?? $value);
             }
         }
@@ -93,38 +90,31 @@ class OptionLabelResolver
     }
 
     /**
-     * Returns the option array for the given source-model class, using a per-request cache.
-     * Returns null if instantiation or toOptionArray() fails.
-     *
-     * @return array<int|string, mixed>|null
+     * @return array<int|string, mixed>
      */
-    private function getSourceModelOptions(string $sourceModelClass): ?array
+    private function getOptions(Subject $field): array
     {
-        if (array_key_exists($sourceModelClass, $this->sourceModelOptionsCache)) {
-            return $this->sourceModelOptionsCache[$sourceModelClass];
+        $fieldPath = (string) $field->getPath();
+
+        if (array_key_exists($fieldPath, $this->optionsByFieldPath)) {
+            return $this->optionsByFieldPath[$fieldPath];
         }
 
         try {
-            $sourceModel = $this->objectManager->create($sourceModelClass);
-            $options = $sourceModel->toOptionArray();
-
-            if (!is_array($options)) {
-                $this->sourceModelOptionsCache[$sourceModelClass] = null;
-                return null;
-            }
-
-            $this->sourceModelOptionsCache[$sourceModelClass] = $options;
-            return $options;
+            $options = $field->getOptions();
         } catch (\Throwable $e) {
             $this->logger->debug(
                 sprintf(
-                    'AvS_ScopeHint2: failed to resolve options from source model "%s": %s',
-                    $sourceModelClass,
+                    'AvS_ScopeHint2: failed to resolve options for config field "%s": %s',
+                    $fieldPath,
                     $e->getMessage()
                 )
             );
-            $this->sourceModelOptionsCache[$sourceModelClass] = null;
-            return null;
+            $options = [];
         }
+
+        $this->optionsByFieldPath[$fieldPath] = is_array($options) ? $options : [];
+
+        return $this->optionsByFieldPath[$fieldPath];
     }
 }

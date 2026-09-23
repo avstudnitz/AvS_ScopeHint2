@@ -5,8 +5,15 @@ declare(strict_types=1);
 namespace AvS\ScopeHint\Test\Unit\Service\ValueFormatter;
 
 use AvS\ScopeHint\Service\ValueFormatter\SerializedArrayFormatter;
+use Magento\Config\Model\Config\BackendFactory;
+use Magento\Config\Model\Config\CommentFactory;
+use Magento\Config\Model\Config\SourceFactory;
+use Magento\Config\Model\Config\Structure\Element\Dependency\Mapper;
 use Magento\Config\Model\Config\Structure\Element\Field;
 use Magento\Framework\Escaper;
+use Magento\Framework\Module\Manager as ModuleManager;
+use Magento\Framework\View\Element\BlockFactory;
+use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -26,82 +33,37 @@ class SerializedArrayFormatterTest extends TestCase
         $this->formatter = new SerializedArrayFormatter($this->escaper);
     }
 
-    private function fieldWithBackend(string $backendModel): Field
+    public function testSupportsArraySerializedBackendModel(): void
     {
-        $field = $this->getMockBuilder(Field::class)
-            ->disableOriginalConstructor()
-            ->onlyMethods(['getData'])
-            ->getMock();
-        $field->method('getData')->willReturnCallback(static function ($key) use ($backendModel) {
-            return $key === 'backend_model' ? $backendModel : null;
-        });
+        $field = $this->createField(['backend_model' => 'Magento\Config\Model\Config\Backend\Serialized\ArraySerialized']);
 
-        return $field;
+        self::assertTrue($this->formatter->supports($field));
     }
 
     public function testSupportsSerializedBackendModel(): void
     {
-        $field = $this->fieldWithBackend('Magento\Config\Model\Config\Backend\Serialized\ArraySerialized');
+        $field = $this->createField(['backend_model' => 'Magento\Config\Model\Config\Backend\Serialized']);
 
         self::assertTrue($this->formatter->supports($field));
     }
 
-    public function testSupportsFieldArrayBackend(): void
+    public function testDoesNotSupportUnrelatedBackendModel(): void
     {
-        $field = $this->fieldWithBackend('Magento\Config\Model\Config\Backend\Serialized');
-
-        self::assertTrue($this->formatter->supports($field));
-    }
-
-    public function testDoesNotSupportEmptyBackend(): void
-    {
-        $field = $this->fieldWithBackend('');
+        $field = $this->createField(['backend_model' => 'Magento\Config\Model\Config\Backend\Email\Address']);
 
         self::assertFalse($this->formatter->supports($field));
     }
 
-    public function testSupportsObjectBackendInstance(): void
+    public function testDoesNotSupportFieldWithoutBackendModel(): void
     {
-        // Magento sometimes returns an instantiated backend model object instead of a FQCN
-        // string. The formatter must handle both cases via instanceof.
-        $unrelatedBackend = new \stdClass();
-        $serializedBackend = $this->createMock(\Magento\Config\Model\Config\Backend\Serialized\ArraySerialized::class);
-
-        $field1 = $this->fieldWithBackendObject($serializedBackend);
-        self::assertTrue($this->formatter->supports($field1));
-
-        $field2 = $this->fieldWithBackendObject($unrelatedBackend);
-        self::assertFalse($this->formatter->supports($field2));
-    }
-
-    public function testHandlesMissingBackendModelKey(): void
-    {
-        // Field::getBackendModel() in Magento warns "Undefined array key 'backend_model'"
-        // when the field has no backend model. Using getData() instead returns null safely.
-        $field = $this->getMockBuilder(Field::class)
-            ->disableOriginalConstructor()
-            ->onlyMethods(['getData'])
-            ->getMock();
-        $field->method('getData')->willReturn(null);
+        $field = $this->createField([]);
 
         self::assertFalse($this->formatter->supports($field));
-    }
-
-    private function fieldWithBackendObject(object $backend): Field
-    {
-        $field = $this->getMockBuilder(Field::class)
-            ->disableOriginalConstructor()
-            ->onlyMethods(['getData'])
-            ->getMock();
-        $field->method('getData')->willReturnCallback(static function ($key) use ($backend) {
-            return $key === 'backend_model' ? $backend : null;
-        });
-        return $field;
     }
 
     public function testFormatArrayValueReturnsRowCount(): void
     {
-        $field = $this->fieldWithBackend('Magento\Config\Model\Config\Backend\Serialized');
+        $field = $this->createField(['backend_model' => 'Magento\Config\Model\Config\Backend\Serialized']);
 
         $result = $this->formatter->format(['row1' => [], 'row2' => [], 'row3' => []], $field);
 
@@ -111,7 +73,7 @@ class SerializedArrayFormatterTest extends TestCase
 
     public function testFormatJsonStringReturnsRowCount(): void
     {
-        $field = $this->fieldWithBackend('Magento\Config\Model\Config\Backend\Serialized');
+        $field = $this->createField(['backend_model' => 'Magento\Config\Model\Config\Backend\Serialized']);
         $json = json_encode([['price' => 10], ['price' => 20]]);
 
         $result = $this->formatter->format($json, $field);
@@ -122,10 +84,29 @@ class SerializedArrayFormatterTest extends TestCase
 
     public function testFormatInvalidStringReturnsFallback(): void
     {
-        $field = $this->fieldWithBackend('Magento\Config\Model\Config\Backend\Serialized');
+        $field = $this->createField(['backend_model' => 'Magento\Config\Model\Config\Backend\Serialized']);
 
         $result = $this->formatter->format('not-serialized-at-all!!!', $field);
 
         self::assertStringContainsString('serialized data differs', $result);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function createField(array $data): Field
+    {
+        $field = new Field(
+            $this->createMock(StoreManagerInterface::class),
+            $this->createMock(ModuleManager::class),
+            $this->createMock(BackendFactory::class),
+            $this->createMock(SourceFactory::class),
+            $this->createMock(CommentFactory::class),
+            $this->createMock(BlockFactory::class),
+            $this->createMock(Mapper::class)
+        );
+        $field->setData($data + ['id' => 'serialized', 'type' => 'text'], 'default');
+
+        return $field;
     }
 }

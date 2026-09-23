@@ -34,13 +34,18 @@ class OverrideSourcePool
      * @param string $entityType Either "product" or "category".
      * @param int    $entityId
      * @param array  $fieldMeta  The `arguments.data.config` slice of the field's UI meta.
+     * @param int    $storeId    Store view being edited (0 = default scope).
      * @return OverrideResultInterface|null
      */
-    public function resolve(string $entityType, int $entityId, array $fieldMeta): ?OverrideResultInterface
-    {
+    public function resolve(
+        string $entityType,
+        int $entityId,
+        array $fieldMeta,
+        int $storeId = 0
+    ): ?OverrideResultInterface {
         foreach ($this->sources as $source) {
             if ($source->supports($entityType, $fieldMeta)) {
-                return $source->getOverrides($entityType, $entityId, $fieldMeta);
+                return $source->getOverrides($entityType, $entityId, $fieldMeta, $storeId);
             }
         }
 

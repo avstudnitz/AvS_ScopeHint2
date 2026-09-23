@@ -9,7 +9,7 @@ use AvS\ScopeHint\Api\Data\ScopeOverrideInterface;
 use AvS\ScopeHint\Block\Adminhtml\Eav\Popover;
 use AvS\ScopeHint\Plugin\ProductEavDataProviderPlugin;
 use AvS\ScopeHint\Service\OverrideSourcePool;
-use Magento\Catalog\Api\Data\ProductInterface;
+use Magento\Catalog\Model\Product;
 use Magento\Catalog\Ui\DataProvider\Product\Form\Modifier\Eav;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Escaper;
@@ -84,7 +84,7 @@ class ProductEavDataProviderPluginTest extends TestCase
 
     public function testReturnsResultUnchangedWhenProductIdIsNull(): void
     {
-        $product = $this->createMock(ProductInterface::class);
+        $product = $this->createMock(Product::class);
         $product->method('getId')->willReturn(null);
         $this->registry->method('registry')->with('current_product')->willReturn($product);
 
@@ -247,10 +247,24 @@ class ProductEavDataProviderPluginTest extends TestCase
     // Helpers
     // ------------------------------------------------------------------
 
-    private function stubProduct(int $id): void
+    public function testPoolReceivesEditedStoreId(): void
     {
-        $product = $this->createMock(ProductInterface::class);
+        $this->stubProduct(7, 2);
+        $fieldMeta = ['code' => 'name'];
+
+        $this->pool->expects(self::once())
+            ->method('resolve')
+            ->with('product', 7, $fieldMeta, 2)
+            ->willReturn(null);
+
+        $this->plugin->afterSetupAttributeMeta($this->subject, $this->buildResult($fieldMeta));
+    }
+
+    private function stubProduct(int $id, int $storeId = 0): void
+    {
+        $product = $this->createMock(Product::class);
         $product->method('getId')->willReturn($id);
+        $product->method('getStoreId')->willReturn($storeId);
         $this->registry->method('registry')->with('current_product')->willReturn($product);
     }
 

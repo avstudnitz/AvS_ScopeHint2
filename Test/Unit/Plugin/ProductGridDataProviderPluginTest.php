@@ -78,7 +78,7 @@ class ProductGridDataProviderPluginTest extends TestCase
         $this->scopeConfig->method('isSetFlag')->willReturn(false);
 
         $this->aggregator->method('getOverrides')
-            ->with([1])
+            ->with([1], ['entity_id', 'name'])
             ->willReturn([
                 1 => [
                     'name' => [
@@ -108,6 +108,36 @@ class ProductGridDataProviderPluginTest extends TestCase
             'data-scopehint-popover',
             $output['items'][0]['__scopehint_name']
         );
+    }
+
+    public function testAfterGetDataRendersRegisteredGridFieldMissingFromItem(): void
+    {
+        $this->scopeConfig->method('isSetFlag')->willReturn(false);
+        $this->plugin->beforeAddField($this->subject, 'scopehint_note');
+
+        $this->aggregator->method('getOverrides')
+            ->with([1], ['scopehint_note', 'entity_id', 'name'])
+            ->willReturn([
+                1 => [
+                    'scopehint_note' => [
+                        2 => [
+                            'displayValue' => 'Store only',
+                            'storeName'    => 'German',
+                            'storeCode'    => 'de',
+                            'websiteCode'  => 'base',
+                        ],
+                    ],
+                ],
+            ]);
+        $this->cellPopover->method('render')->willReturn('PILL');
+
+        $output = $this->plugin->afterGetData($this->subject, [
+            'items' => [
+                ['entity_id' => '1', 'name' => 'My Product'],
+            ],
+        ]);
+
+        $this->assertSame('PILL', $output['items'][0]['__scopehint_scopehint_note']);
     }
 
     public function testAfterGetDataSkipsColumnNotPresentInItem(): void

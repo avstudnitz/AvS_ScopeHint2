@@ -24,10 +24,6 @@ use Magento\Framework\View\LayoutInterface;
  * The popover HTML is written into the `additionalInfo` field-meta key, which
  * Knockout renders via html= inside `.admin__field-control`. A small JS
  * bootstrap (popover-bootstrap.js) handles re-binding after KO injection.
- *
- * BC note: constructor changed in 1.4.0 — EavScopeOverrideDetector, EavConfig,
- * RequestInterface, and ArrayManager were replaced by OverrideSourcePool,
- * LayoutInterface, and ScopeConfigInterface. See CHANGELOG.md for details.
  */
 class CategoryDataProviderPlugin
 {
@@ -78,10 +74,11 @@ class CategoryDataProviderPlugin
         }
 
         $categoryId = (int) $category->getId();
+        $storeId = (int) $category->getStoreId();
         $isLegacy = $this->scopeConfig->isSetFlag(self::CONFIG_LEGACY_TOOLTIP);
 
         foreach ($this->iterateFieldMeta($result) as $attributePath => $fieldMeta) {
-            $overrides = $this->overrideSourcePool->resolve('category', $categoryId, $fieldMeta);
+            $overrides = $this->overrideSourcePool->resolve('category', $categoryId, $fieldMeta, $storeId);
 
             if ($overrides === null || $overrides->isEmpty()) {
                 continue;
