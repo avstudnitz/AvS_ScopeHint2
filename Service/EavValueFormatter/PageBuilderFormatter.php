@@ -61,16 +61,24 @@ class PageBuilderFormatter
             return $this->escape((string) __('(Page Builder content differs)'));
         }
 
-        $content = (string) $value;
-        $content = preg_replace('#<(script|style)\b[^>]*>.*?</\1\s*>#is', ' ', $content) ?? $content;
-        $content = preg_replace(
-            '/<\s*\/?\s*(?:address|article|aside|blockquote|br|div|figcaption|figure|footer|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|table|td|th|tr|ul)\b[^>]*>/i',
-            ' ',
-            $content
-        ) ?? $content;
+        // The "HTML Code" content type stores its markup entity-encoded. Decoding only that element
+        // keeps literal "&lt;value&gt;" text elsewhere from being stripped as a tag.
+        $content = preg_replace_callback(
+            '#(<div\b[^>]*\bdata-content-type=(["\'])html\2[^>]*>)(.*?)(</div\s*>)#is',
+            function (array $match): string {
+                $markup = html_entity_decode($match[3], ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
-        $preview = $this->stripTags->filter($content);
-        $preview = html_entity_decode((string) $preview, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                return $match[1] . ' ' . $this->stripMarkup($markup) . ' ' . $match[4];
+            },
+            (string) $value
+        );
+
+        // A PCRE limit hit on a very large value would otherwise preview the undecoded markup.
+        if ($content === null) {
+            return $this->escape((string) __('(Page Builder content differs)'));
+        }
+
+        $preview = html_entity_decode($this->stripMarkup($content), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $normalized = preg_replace('/[\p{Z}\s]+/u', ' ', $preview);
         $preview = trim($normalized !== null ? $normalized : $preview);
 
@@ -81,6 +89,18 @@ class PageBuilderFormatter
         $label = (string) __('(Page Builder content differs)');
 
         return $this->escape($preview !== '' ? $preview . ' ' . $label : $label);
+    }
+
+    private function stripMarkup(string $content): string
+    {
+        $content = preg_replace('#<(script|style)\b[^>]*>.*?</\1\s*>#is', ' ', $content) ?? $content;
+        $content = preg_replace(
+            '/<\s*\/?\s*(?:address|article|aside|blockquote|br|div|figcaption|figure|footer|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|table|td|th|tr|ul)\b[^>]*>/i',
+            ' ',
+            $content
+        ) ?? $content;
+
+        return (string) $this->stripTags->filter($content);
     }
 
     private function escape(string $value): string

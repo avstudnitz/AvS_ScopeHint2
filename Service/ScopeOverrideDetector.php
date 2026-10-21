@@ -8,6 +8,7 @@ use AvS\ScopeHint\Api\Data\OverrideResultInterface;
 use AvS\ScopeHint\Api\Data\ScopeOverrideInterface;
 use AvS\ScopeHint\Model\Data\OverrideResult;
 use AvS\ScopeHint\Model\Data\ScopeOverride;
+use AvS\ScopeHint\Service\ValueFormatter\ParentAwareValueFormatterInterface;
 use AvS\ScopeHint\Service\ValueFormatter\Pool;
 use Magento\Config\Model\Config\Structure\Element\Field as Subject;
 use Magento\Config\Model\ResourceModel\Config\Data\CollectionFactory;
@@ -104,7 +105,7 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
                         (int) $website->getId(),
                         (string) $website->getCode(),
                         $scopeValue,
-                        $this->formatDisplayValue($scopeValue, $field)
+                        $this->formatDisplayValue($scopeValue, $currentValue, $field)
                     );
                 }
             }
@@ -134,7 +135,7 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
                     $storeId,
                     $this->resolveWebsiteCodeForStore($store),
                     $scopeValue,
-                    $this->formatDisplayValue($scopeValue, $field)
+                    $this->formatDisplayValue($scopeValue, $parentValue, $field)
                 );
             }
         }
@@ -192,11 +193,16 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
 
     /**
      * @param mixed $value
+     * @param mixed $parentValue
      */
-    private function formatDisplayValue($value, ?Subject $field): string
+    private function formatDisplayValue($value, $parentValue, ?Subject $field): string
     {
         if ($field !== null) {
-            return $this->formatterPool->resolve($field)->format($value, $field);
+            $formatter = $this->formatterPool->resolve($field);
+
+            return $formatter instanceof ParentAwareValueFormatterInterface
+                ? $formatter->formatAgainstParent($value, $parentValue, $field)
+                : $formatter->format($value, $field);
         }
 
         // Fallback path: no field context available.

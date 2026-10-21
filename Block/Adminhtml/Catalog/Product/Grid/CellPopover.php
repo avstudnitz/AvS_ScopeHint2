@@ -90,10 +90,13 @@ class CellPopover
             $html .= '<ul>';
 
             foreach ($websiteOverrides as $override) {
-                $storeName     = $this->escaper->escapeHtml((string) ($override['storeName'] ?? ''));
-                $storeCode     = $this->escaper->escapeHtml((string) ($override['storeCode'] ?? ''));
-                $storeCodeAttr = $this->escaper->escapeHtmlAttr((string) ($override['storeCode'] ?? ''));
-                $displayValue  = $this->escaper->escapeHtml((string) ($override['displayValue'] ?? ''));
+                $storeName       = $this->escaper->escapeHtml((string) ($override['storeName'] ?? ''));
+                $storeCode       = $this->escaper->escapeHtml((string) ($override['storeCode'] ?? ''));
+                $storeCodeAttr   = $this->escaper->escapeHtmlAttr((string) ($override['storeCode'] ?? ''));
+                $rawDisplayValue = (string) ($override['displayValue'] ?? '');
+                $displayValue    = $this->escaper->escapeHtml(
+                    $rawDisplayValue !== '' ? $rawDisplayValue : (string) __('(empty)')
+                );
 
                 $html .= '<li data-store-code="' . $storeCodeAttr . '">';
                 $html .= '<div class="scopehint-store-meta">';

@@ -10,12 +10,26 @@
 define(['jquery', 'AvS_ScopeHint/js/popover'], function ($, popoverFactory) {
     'use strict';
 
+    // Page Builder fields render additionalInfo below the full-width stage, where the badge
+    // is detached from its field and the open panel covers the label of the next field.
+    function anchorToPageBuilderLabel(popover) {
+        var $label = $(popover).closest('.admin__field-page-builder').find('.admin__field-label').first();
+
+        if (!$label.length) {
+            return;
+        }
+
+        $label.children('[data-scopehint-popover]').not(popover).remove();
+        $label.append(popover);
+    }
+
     function bindAll(root) {
         $(root || document).find('[data-scopehint-popover]').addBack('[data-scopehint-popover]').each(function () {
             if (this.dataset.scopehintBound === '1') {
                 return;
             }
             this.dataset.scopehintBound = '1';
+            anchorToPageBuilderLabel(this);
             popoverFactory['AvS_ScopeHint/js/popover']({}, this);
         });
     }

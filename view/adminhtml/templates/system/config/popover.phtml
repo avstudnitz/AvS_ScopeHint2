@@ -50,10 +50,15 @@ $triggerLabel  = $block->escapeHtmlAttr((string) __('%1 scope overrides — clic
                     <summary><?= $summaryLabel ?></summary>
                     <ul>
                         <?php foreach ($websiteOverrides as $override): ?>
+                        <?php $displayValue = $override->getDisplayValue() ?>
                         <li data-store-code="<?= $block->escapeHtmlAttr($override->getScopeCode()) ?>">
-                            <?= $block->escapeHtml($override->getScopeName()) ?>
-                            (<code><?= $block->escapeHtml($override->getScopeCode()) ?></code>):
-                            &ldquo;<?= /* @noEscape */ $override->getDisplayValue() ?>&rdquo;
+                            <div class="scopehint-store-meta">
+                                <span class="scopehint-store-name"><?= $block->escapeHtml($override->getScopeName()) ?></span>
+                                <code class="scopehint-store-code"><?= $block->escapeHtml($override->getScopeCode()) ?></code>
+                            </div>
+                            <div class="scopehint-store-value">
+                                <?= $displayValue !== '' ? /* @noEscape */ $displayValue : $block->escapeHtml(__('(empty)')) ?>
+                            </div>
                         </li>
                         <?php endforeach; ?>
                     </ul>

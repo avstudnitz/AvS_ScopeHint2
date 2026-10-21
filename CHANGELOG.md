@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `Service\ValueFormatter\ParentAwareValueFormatterInterface` — optional
+  extension of `ValueFormatterInterface` for system-config formatters that
+  describe an override relative to the value it overrides. Field arrays use it
+  to list the changed rows instead of only the row count.
 - `Api\OverrideSourceInterface` — extension point for UI-form scope-override
   detection. Third-party modules can register custom sources via
   `AvS\ScopeHint\Service\OverrideSourcePool` in `etc/adminhtml/di.xml`.

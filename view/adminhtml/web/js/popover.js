@@ -14,14 +14,36 @@ define(['jquery'], function ($) {
         this.$search  = this.$root.find('.scopehint-search').first();
         this.$close   = this.$root.find('.scopehint-close').first();
 
-        this._outsideHandler  = null;
-        this._keyHandler      = null;
-        this._portaled        = false;
-        this._panelOrigParent = null;
-        this._panelOrigNext   = null;
+        this._outsideHandler    = null;
+        this._keyHandler        = null;
+        this._repositionHandler = null;
+        this._portaled          = false;
+        this._panelOrigParent   = null;
+        this._panelOrigNext     = null;
 
         this._bind();
     }
+
+    /**
+     * Magento's toggleValueElements() disables every button and input in the
+     * value cell when "Use Default/System Value" is ticked, which would lock the
+     * hint of an inherited field. The panel is checked as well because it is
+     * moved to <body> while open.
+     */
+    Popover.prototype._keepControlsEnabled = function () {
+        var observer = new MutationObserver(function (mutations) {
+            mutations.forEach(function (mutation) {
+                if (mutation.target.disabled) {
+                    mutation.target.disabled = false;
+                    mutation.target.classList.remove('disabled');
+                }
+            });
+        });
+        var options = {attributes: true, attributeFilter: ['disabled'], subtree: true};
+
+        observer.observe(this.$root[0], options);
+        observer.observe(this.$panel[0], options);
+    };
 
     Popover.prototype._bind = function () {
         var self = this;
@@ -56,8 +78,20 @@ define(['jquery'], function ($) {
         if (this.$search.length) {
             this.$search.on('input', function () {
                 self._filter($(this).val());
+                if (self._portaled) {
+                    self._positionPanel();
+                }
             });
         }
+
+        this._keepControlsEnabled();
+
+        // toggle does not bubble, so listen in the capture phase for every <details>.
+        this.$panel[0].addEventListener('toggle', function () {
+            if (self._portaled) {
+                self._positionPanel();
+            }
+        }, true);
 
         // Up/Down arrow navigation between <summary> elements
         this.$panel.on('keydown', 'summary', function (e) {
@@ -106,13 +140,16 @@ define(['jquery'], function ($) {
         this._registerEscapeKey();
     };
 
-    Popover.prototype._close = function () {
+    Popover.prototype._close = function (options) {
         this.$trigger.attr('aria-expanded', 'false');
         this.$panel.attr('hidden', '');
         if (this._portaled) {
             this._restorePanel();
         }
-        this.$trigger.trigger('focus');
+        // Focusing a trigger that scrolled out of view would scroll the page back to it.
+        if (!options || options.restoreFocus !== false) {
+            this.$trigger.trigger('focus');
+        }
         this._unregisterOutsideClick();
         this._unregisterEscapeKey();
     };
@@ -124,27 +161,79 @@ define(['jquery'], function ($) {
         this._panelOrigParent = this.$panel.parent()[0];
         this._panelOrigNext   = this.$panel[0].nextSibling;
 
-        var triggerRect = this.$trigger[0].getBoundingClientRect();
-        var top         = triggerRect.bottom + 8;
-        var left        = triggerRect.left;
-        var maxLeft     = window.innerWidth - 340;
-
-        if (left > maxLeft) {
-            left = maxLeft;
-        }
-        if (left < 0) {
-            left = 0;
-        }
-
-        this.$panel.css({
-            position: 'fixed',
-            top:      top + 'px',
-            left:     left + 'px',
-            right:    'auto',
-        });
-
+        this.$panel.css({ position: 'fixed', right: 'auto' });
         document.body.appendChild(this.$panel[0]);
         this._portaled = true;
+        this._positionPanel();
+        this._registerReposition();
+    };
+
+    // The panel is position:fixed, so it has to be re-anchored whenever the page or a
+    // scrollable ancestor of the grid moves its trigger.
+    Popover.prototype._positionPanel = function () {
+        var gap         = 8;
+        var triggerRect = this.$trigger[0].getBoundingClientRect();
+        var panel       = this.$panel[0];
+        var spaceBelow  = window.innerHeight - triggerRect.bottom - gap;
+        var spaceAbove  = triggerRect.top - gap;
+
+        // Capping the height instead of clamping top keeps the panel off its trigger, which
+        // _isTriggerVisible() would otherwise hit-test as hidden and close the panel.
+        this.$panel.css('max-height', Math.max(0, Math.min(window.innerHeight * 0.6, Math.max(spaceAbove, spaceBelow))) + 'px');
+
+        var opensAbove  = panel.offsetHeight > spaceBelow && spaceAbove > spaceBelow;
+        var top         = opensAbove
+            ? triggerRect.top - gap - panel.offsetHeight
+            : triggerRect.bottom + gap;
+        var left        = Math.max(0, Math.min(triggerRect.left, window.innerWidth - panel.offsetWidth));
+
+        this.$panel.css({ top: top + 'px', left: left + 'px' });
+    };
+
+    Popover.prototype._registerReposition = function () {
+        var self        = this;
+        var frameQueued = false;
+
+        this._repositionHandler = function () {
+            if (frameQueued) {
+                return;
+            }
+            frameQueued = true;
+            window.requestAnimationFrame(function () {
+                frameQueued = false;
+                if (!self._portaled) {
+                    return;
+                }
+                if (self._isTriggerVisible()) {
+                    self._positionPanel();
+                } else {
+                    self._close({ restoreFocus: false });
+                }
+            });
+        };
+        window.addEventListener('scroll', this._repositionHandler, true);
+        window.addEventListener('resize', this._repositionHandler);
+    };
+
+    // Hit-testing also catches the trigger sliding under the grid's sticky header.
+    Popover.prototype._isTriggerVisible = function () {
+        var rect = this.$trigger[0].getBoundingClientRect();
+
+        if (rect.bottom <= 0 || rect.top >= window.innerHeight) {
+            return false;
+        }
+
+        var topmost = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+
+        return topmost !== null && this.$root[0].contains(topmost);
+    };
+
+    Popover.prototype._unregisterReposition = function () {
+        if (this._repositionHandler) {
+            window.removeEventListener('scroll', this._repositionHandler, true);
+            window.removeEventListener('resize', this._repositionHandler);
+            this._repositionHandler = null;
+        }
     };
 
     Popover.prototype._restorePanel = function () {
@@ -152,7 +241,8 @@ define(['jquery'], function ($) {
             return;
         }
 
-        this.$panel.css({ position: '', top: '', left: '', right: '' });
+        this._unregisterReposition();
+        this.$panel.css({ position: '', top: '', left: '', right: '', 'max-height': '' });
 
         if (this._panelOrigParent) {
             if (this._panelOrigNext && this._panelOrigNext.parentNode === this._panelOrigParent) {

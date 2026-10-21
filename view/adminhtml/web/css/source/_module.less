@@ -103,6 +103,10 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
     color: @scopehint__text-color;
     margin-top: 4px;
+    // Page Builder popovers sit inside the field label, which is bold and does not wrap.
+    font-weight: normal;
+    white-space: normal;
+    text-align: left;
 
     &[hidden] {
         display: none;

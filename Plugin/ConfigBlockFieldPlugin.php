@@ -59,14 +59,21 @@ class ConfigBlockFieldPlugin
 
         $fieldConfig = (array) $element->getData('field_config');
         $structurePath = trim((string) ($fieldConfig['path'] ?? '') . '/' . (string) ($fieldConfig['id'] ?? ''), '/');
-        $configPath = (string) ($fieldConfig['config_path'] ?? $structurePath);
         $field = $this->structure->getElement($structurePath);
 
         if (!$field instanceof StructureField) {
-            $field = $this->structure->getElementByConfigPath($configPath);
+            $field = $this->structure->getElementByConfigPath((string) ($fieldConfig['config_path'] ?? $structurePath));
         }
 
-        if (!$field instanceof StructureField || $configPath === '') {
+        if (!$field instanceof StructureField) {
+            return [$element];
+        }
+
+        // Ask the structure field, not field_config: plugins such as Magento_Paypal's FieldPlugin map
+        // relocated groups (payment_us/free/title) back to their stored path (payment/free/title).
+        $configPath = (string) ($field->getConfigPath() ?: $field->getPath());
+
+        if ($configPath === '') {
             return [$element];
         }
 

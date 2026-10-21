@@ -123,4 +123,16 @@ class PageBuilderFormatterTest extends TestCase
             $this->formatter->format(['unexpected' => 'value'])
         );
     }
+
+    public function testHtmlCodeContentTypeShowsTextNotEncodedMarkup(): void
+    {
+        $value = '<div data-content-type="html" data-appearance="default" data-element="main">'
+            . '&lt;div class=&quot;hyva-card p-12&quot;&gt;&lt;h2&gt;Warum Checkout?&lt;/h2&gt;'
+            . '&lt;p&gt;Schnell &amp;amp; einfach&lt;/p&gt;&lt;script&gt;alert(1)&lt;/script&gt;&lt;/div&gt;</div>';
+
+        self::assertSame(
+            'Warum Checkout? Schnell &amp; einfach (Page Builder content differs)',
+            $this->formatter->format($value)
+        );
+    }
 }

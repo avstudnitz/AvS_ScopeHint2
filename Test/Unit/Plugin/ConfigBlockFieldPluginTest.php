@@ -40,8 +40,10 @@ class ConfigBlockFieldPluginTest extends TestCase
         $layout = $this->createMock(LayoutInterface::class);
         $layout->method('createBlock')->willReturn($popover);
 
+        $field = $this->createMock(StructureField::class);
+        $field->method('getPath')->willReturn('section/group/field');
         $structure = $this->createMock(Structure::class);
-        $structure->method('getElement')->willReturn($this->createMock(StructureField::class));
+        $structure->method('getElement')->willReturn($field);
 
         $this->plugin = new ConfigBlockFieldPlugin(
             $detector,
@@ -83,6 +85,32 @@ class ConfigBlockFieldPluginTest extends TestCase
             . '<table><tr><td class="value">cell</td></tr></table></td></tr>',
             $rendered
         );
+    }
+
+    public function testDetectsOverridesOnTheStructureFieldConfigPath(): void
+    {
+        $field = $this->createMock(StructureField::class);
+        $field->method('getPath')->willReturn('payment_us/free/title');
+        $field->method('getConfigPath')->willReturn('payment/free/title');
+        $structure = $this->createMock(Structure::class);
+        $structure->method('getElement')->with('payment_us/free/title')->willReturn($field);
+
+        $detector = $this->createMock(ScopeOverrideDetectorInterface::class);
+        $detector->expects(self::once())
+            ->method('getOverrides')
+            ->with('payment/free/title', $field)
+            ->willReturn(new OverrideResult([]));
+
+        $plugin = new ConfigBlockFieldPlugin(
+            $detector,
+            $this->createMock(LayoutInterface::class),
+            $this->createMock(ScopeConfigInterface::class),
+            $structure
+        );
+        $element = $this->createElement();
+        $element->setData('field_config', ['path' => 'payment_us/free', 'id' => 'title']);
+
+        $plugin->beforeRender($this->createMock(FieldBlock::class), $element);
     }
 
     private function createElement(): AbstractElement
