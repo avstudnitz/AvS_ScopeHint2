@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <preference for="AvS\ScopeHint\Api\Data\OverrideResultInterface"
+                type="AvS\ScopeHint\Model\Data\OverrideResult"/>
+    <preference for="AvS\ScopeHint\Api\Data\ScopeOverrideInterface"
+                type="AvS\ScopeHint\Model\Data\ScopeOverride"/>
+    <preference for="AvS\ScopeHint\Service\ScopeOverrideDetectorInterface"
+                type="AvS\ScopeHint\Service\ScopeOverrideDetector"/>
+</config>

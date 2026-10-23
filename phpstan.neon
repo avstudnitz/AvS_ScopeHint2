@@ -1,0 +1,11 @@
+parameters:
+    level: 5
+    paths:
+        - Plugin
+        - Service
+        - Block
+        - Model
+        - Api
+    excludePaths:
+        - Test/*
+    treatPhpDocTypesAsCertain: false

@@ -8,3 +8,321 @@
 //
 //  Common styles
 //  ---------------------------------------------
+
+
+//
+//  ScopeHint Popover
+//  ---------------------------------------------
+//
+//  Uses standard Magento backend LESS variables where available.
+//  Fallback hex values are kept for themes that may not define all vars.
+//
+//  Variables used (verify in vendor/magento/theme-adminhtml-backend):
+//    @field-label__color          — defined in variables/_forms.less
+//    @field-control__border-color — defined in variables/_forms.less
+//    @field-control__focus__border-color (= @color-blue-pure #007bdb)
+//    @color-white                 — defined in variables/_colors.less
+//    @page__background-color      — defined in lib/web/css (= @color-white)
+//
+
+// Keep every interactive colour tied to the active admin theme. In
+// particular, border colours are not suitable hover backgrounds: they are
+// structural tokens and can have insufficient text contrast in child themes.
+@scopehint__surface-color: @field-control__background-color;
+@scopehint__text-color: @field-control__color;
+@scopehint__border-color: @field-control__border-color;
+@scopehint__accent-color: @field-control__focus__border-color;
+@scopehint__accent-background-color: darken(@scopehint__accent-color, 8%);
+@scopehint__hover-background-color: @action-menu__hover__background-color;
+
+.scopehint-popover {
+    display: inline-block;
+    position: relative;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+.scopehint-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    min-width: 24px;
+    height: 24px;
+    border: 1px solid @scopehint__border-color;
+    border-radius: 12px;
+    background: @scopehint__surface-color;
+    color: @scopehint__text-color;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+
+    &:hover {
+        background: @scopehint__hover-background-color;
+        border-color: @scopehint__accent-color;
+        color: @scopehint__text-color;
+    }
+
+    &:focus {
+        border-color: @scopehint__accent-color;
+        box-shadow: @focus__box-shadow;
+        outline: none;
+    }
+
+    &:focus-visible {
+        box-shadow: none;
+        outline: 2px solid @scopehint__accent-color;
+        outline-offset: 2px;
+    }
+
+    &[aria-expanded="true"] {
+        background: @scopehint__accent-background-color;
+        border-color: @scopehint__accent-background-color;
+        color: @color-white;
+    }
+}
+
+.scopehint-badge {
+    pointer-events: none;
+}
+
+.scopehint-panel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 999;
+    min-width: 280px;
+    max-width: 480px;
+    max-height: 60vh;
+    overflow-y: auto;
+    background: @scopehint__surface-color;
+    border: 1px solid @scopehint__border-color;
+    border-radius: @field-control__border-radius;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+    color: @scopehint__text-color;
+    margin-top: 4px;
+    // Page Builder popovers sit inside the field label, which is bold and does not wrap.
+    font-weight: normal;
+    white-space: normal;
+    text-align: left;
+
+    &[hidden] {
+        display: none;
+    }
+}
+
+.scopehint-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    border-bottom: 1px solid @scopehint__border-color;
+    background: @scopehint__surface-color;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.scopehint-search {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid @scopehint__border-color;
+    border-radius: @field-control__border-radius;
+    font-size: 12px;
+    color: @scopehint__text-color;
+    background: @scopehint__surface-color;
+
+    &:focus {
+        border-color: @scopehint__accent-color;
+        box-shadow: @focus__box-shadow;
+        outline: none;
+    }
+
+    &:focus-visible {
+        box-shadow: none;
+        outline: 2px solid @scopehint__accent-color;
+        outline-offset: 1px;
+    }
+}
+
+.scopehint-close {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: @scopehint__text-color;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+
+    &:hover {
+        background: @scopehint__hover-background-color;
+        color: @scopehint__text-color;
+    }
+
+    &:focus {
+        box-shadow: @focus__box-shadow;
+        outline: none;
+    }
+
+    &:focus-visible {
+        box-shadow: none;
+        outline: 2px solid @scopehint__accent-color;
+        outline-offset: 1px;
+    }
+}
+
+//
+//  Cell-scoped popover overrides
+//  ---------------------------------------------
+//
+//  Reuses all base .scopehint-* rules; only overrides layout for the inline
+//  grid-cell context. The --cell modifier keeps the trigger smaller and renders
+//  the panel as a flat list (no website grouping needed at per-cell scope).
+//
+
+.scopehint-cell-default {
+    display: inline;
+    margin-right: .4rem;
+}
+
+.scopehint-popover--cell {
+    display: inline-flex;
+    vertical-align: middle;
+
+    .scopehint-trigger {
+        height: 2rem;
+        min-width: 2rem;
+        padding: 0 .6rem;
+        font-size: 1rem;
+    }
+}
+
+//
+//  Cell panel — applied to the portaled panel via `.scopehint-panel--cell`
+//  because position:fixed re-parents the panel to <body>, so descendant
+//  selectors under `.scopehint-popover--cell` no longer reach it.
+//
+
+.scopehint-panel--cell {
+    min-width: 28rem;
+    max-width: 40rem;
+    padding-bottom: .4rem;
+
+    .scopehint-panel-header {
+        padding: .8rem 1.2rem;
+    }
+}
+
+//
+//  Websites list
+//  ---------------------------------------------
+
+.scopehint-websites {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    > li {
+        border-bottom: 1px solid @scopehint__border-color;
+
+        &:last-child {
+            border-bottom: none;
+        }
+
+        &[data-search-hidden="true"] {
+            display: none;
+        }
+    }
+
+    details {
+        > summary {
+            padding: 8px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            color: @scopehint__text-color;
+            list-style: none;
+            user-select: none;
+
+            &::-webkit-details-marker {
+                display: none;
+            }
+
+            &::before {
+                content: '\25B6\00A0';
+                font-size: 10px;
+                display: inline-block;
+                transition: transform 0.15s;
+            }
+
+            &:hover {
+                background: @scopehint__hover-background-color;
+                color: @scopehint__text-color;
+            }
+
+            &:focus {
+                box-shadow: inset 0 0 0 1px @scopehint__accent-color;
+                outline: none;
+            }
+
+            &:focus-visible {
+                box-shadow: inset 0 0 0 2px @scopehint__accent-color;
+            }
+        }
+
+        &[open] > summary::before {
+            transform: rotate(90deg);
+        }
+
+        > ul {
+            list-style: none;
+            margin: 0;
+            padding: 0 0 4px 0;
+
+            > li {
+                padding: 4px 10px 4px 24px;
+                font-size: 12px;
+                color: @scopehint__text-color;
+
+                &[data-search-hidden="true"] {
+                    display: none;
+                }
+
+                code {
+                    font-family: monospace;
+                    background: @scopehint__hover-background-color;
+                    border: 1px solid @scopehint__border-color;
+                    color: @scopehint__text-color;
+                    padding: 0 3px;
+                    border-radius: @field-control__border-radius;
+                    font-size: 11px;
+                }
+            }
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scopehint-trigger,
+    .scopehint-websites details > summary::before {
+        transition: none;
+    }
+}
+
+@media (forced-colors: active) {
+    .scopehint-trigger:focus-visible,
+    .scopehint-search:focus-visible,
+    .scopehint-close:focus-visible,
+    .scopehint-websites details > summary:focus-visible {
+        outline-color: Highlight;
+    }
+}

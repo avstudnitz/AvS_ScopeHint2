@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+    <columns name="product_columns">
+        <!-- These are declared statically by Magento, so they never pass through
+             Catalog ColumnFactory with the dynamically-added EAV columns. The cell
+             template keeps $col.getLabel(), so select columns still show labels. -->
+        <column name="name">
+            <settings>
+                <bodyTmpl>AvS_ScopeHint/ui/grid/cells/scopehint</bodyTmpl>
+            </settings>
+        </column>
+        <column name="visibility">
+            <settings>
+                <bodyTmpl>AvS_ScopeHint/ui/grid/cells/scopehint</bodyTmpl>
+            </settings>
+        </column>
+        <column name="status">
+            <settings>
+                <bodyTmpl>AvS_ScopeHint/ui/grid/cells/scopehint</bodyTmpl>
+            </settings>
+        </column>
+    </columns>
+</listing>
