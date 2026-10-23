@@ -66,7 +66,7 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
 
     public function getOverrides(string $path, ?Subject $field = null): OverrideResultInterface
     {
-        $currentWebsiteCode = $this->getWebsiteParam();
+        $currentWebsiteParam = $this->getWebsiteParam();
         $currentStoreCode = $this->getStoreParam();
 
         // A store view has no lower configuration scope.
@@ -75,9 +75,13 @@ class ScopeOverrideDetector implements ScopeOverrideDetectorInterface
         }
 
         $currentWebsiteId = null;
-        if ($currentWebsiteCode !== null) {
+        if ($currentWebsiteParam !== null) {
             try {
-                $currentWebsiteId = (int) $this->websiteRepository->get($currentWebsiteCode)->getId();
+                // The admin scope switcher sends the website ID; WebsiteRepository::get() only accepts a code.
+                $website = is_numeric($currentWebsiteParam)
+                    ? $this->websiteRepository->getById((int) $currentWebsiteParam)
+                    : $this->websiteRepository->get($currentWebsiteParam);
+                $currentWebsiteId = (int) $website->getId();
             } catch (\Throwable $e) {
                 return new OverrideResult([]);
             }

@@ -65,6 +65,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Datetime formatting retains the time component for `datetime` and `time`
   fields. Popovers bind after asynchronous rendering and close on Escape.
 
+### Fixed
+
+- System configuration hints appear on website-scope pages again: the website
+  ID sent by the admin scope switcher is now resolved by ID instead of as a code.
+
 ### Breaking Changes
 
 - **`Plugin\ProductEavDataProviderPlugin` constructor changed.** Previous
