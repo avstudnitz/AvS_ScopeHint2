@@ -29,7 +29,7 @@ When a product or category is edited on store view scope, the hints compare agai
 ![Product grid](docs/images/product-grid-pills.png?raw=true "Scope hint in the product grid")
 
 The module also optionally displays the configuration path (which is used for `ScopeConfigInterface::getValue()`) with the configuration fields, and the attribute code with the product attributes.
-Both are on by default; see [Configuration](#configuration).
+Both are off by default; see [Configuration](#configuration).
 
 Requirements
 ------------
@@ -64,8 +64,8 @@ All settings are located in
 
 | Setting | Config path | Default |
 |---|---|---|
-| Display path for each option in system configuration | `dev/debug/show_path_in_adminhtml` | Yes |
-| Display attribute code for each field in the product edit | `dev/debug/show_attribute_code_in_adminhtml` | Yes |
+| Display path for each option in system configuration | `dev/debug/show_path_in_adminhtml` | No |
+| Display attribute code for each field in the product edit | `dev/debug/show_attribute_code_in_adminhtml` | No |
 | Use legacy scopehint tooltip (deprecated) | `dev/debug/scopehint_legacy_tooltip` | No |
 | Maximum stores for scope hint detection | `dev/debug/scopehint_max_stores` | 50 |
 

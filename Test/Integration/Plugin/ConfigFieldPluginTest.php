@@ -8,6 +8,7 @@ class ConfigFieldPluginTest extends \Magento\TestFramework\TestCase\AbstractBack
     /**
      * @magentoDbIsolation enabled
      * @magentoAppIsolation enabled
+     * @magentoConfigFixture default/dev/debug/show_path_in_adminhtml 1
      */
     public function testPathComment()
     {
@@ -18,6 +19,6 @@ class ConfigFieldPluginTest extends \Magento\TestFramework\TestCase\AbstractBack
 
         $this->dispatch('backend/admin/system_config/edit');
 
-        $this->assertContains((string)__('Path: <code>%1</code>', 'general/country/default'), $this->getResponse()->getBody());
+        $this->assertStringContainsString((string)__('Path: <code>%1</code>', 'general/country/default'), $this->getResponse()->getBody());
     }
 }
