@@ -13,7 +13,8 @@
     "require-dev": {
         "phpstan/phpstan": "^1.10",
         "phpunit/phpunit": "^9.5",
-        "magento/magento-coding-standard": "*"
+        "magento/magento-coding-standard": "*",
+        "bitexpert/phpstan-magento": "^0.11"
     },
     "type": "magento2-module",
     "license": [
@@ -25,6 +26,19 @@
         ],
         "psr-4": {
             "AvS\\ScopeHint\\": ""
+        }
+    },
+    "repositories": {
+        "mage-os-mirror": {
+            "type": "composer",
+            "url": "https://mirror.mage-os.org/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "magento/composer-dependency-version-audit-plugin": false,
+            "magento/magento-composer-installer": false
         }
     }
 }
