@@ -19,7 +19,7 @@
                 </field>
                 <field id="scopehint_max_stores" translate="label comment" type="text" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
                     <label>Maximum stores for scope hint detection</label>
-                    <comment>Maximum number of store views for which EAV override detection runs on the category edit form. Set to 0 to use the default (50). Detection is skipped and a warning is logged when the store count exceeds this value.</comment>
+                    <comment>Maximum number of store views for which EAV override detection runs on the product and category edit forms. Set to 0 to use the default (50). Detection is skipped and a warning is logged when the store count exceeds this value.</comment>
                 </field>
             </group>
         </section>
