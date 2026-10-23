@@ -65,6 +65,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Datetime formatting retains the time component for `datetime` and `time`
   fields. Popovers bind after asynchronous rendering and close on Escape.
 
+- Fields with an `Encrypted` backend model (including virtual types of it) and
+  paths registered as sensitive in `Magento\Config\Model\Config\TypePool` are
+  masked like `password`/`obscure` fields. The masked formatter now takes
+  precedence over the other formatters.
+- `dev/debug/show_path_in_adminhtml` and
+  `dev/debug/show_attribute_code_in_adminhtml` default to "No". Installs that
+  never saved these settings lose the hints after upgrading; re-enable them in
+  the admin or with `bin/magento config:set`.
+- Added German and English translations for the popover and settings texts.
+
 ### Breaking Changes
 
 - **`Plugin\ProductEavDataProviderPlugin` constructor changed.** Previous
