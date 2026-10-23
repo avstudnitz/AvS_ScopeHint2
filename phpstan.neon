@@ -9,3 +9,5 @@ parameters:
     excludePaths:
         - Test/*
     treatPhpDocTypesAsCertain: false
+    bootstrapFiles:
+        - vendor/bitexpert/phpstan-magento/autoload.php
