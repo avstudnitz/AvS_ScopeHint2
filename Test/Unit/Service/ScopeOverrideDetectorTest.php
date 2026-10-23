@@ -181,6 +181,32 @@ class ScopeOverrideDetectorTest extends TestCase
         self::assertSame('us_en', $result->getOverrides()[0]->getScopeCode());
     }
 
+    public function testResolvesNumericWebsiteParamById(): void
+    {
+        $this->stubRequestParams('2', null);
+        $this->stubExplicitValue('general/locale/code', 'stores', 5, 'fr_FR');
+        $this->stubExplicitValue('general/locale/code', 'stores', 6, 'de_DE');
+        $matchingStore = $this->createStore(5, 'us_en', 'US Store', 2);
+        $otherStore = $this->createStore(6, 'de_de', 'DE Store', 3);
+        $website = $this->createWebsite(2, 'main_website', 'Main Website');
+        $this->websiteRepository->method('getList')->willReturn([]);
+        $this->websiteRepository->method('getById')->with(2)->willReturn($website);
+        $this->websiteRepository->expects(self::never())->method('get');
+        $this->storeRepository->method('getList')->willReturn([$matchingStore, $otherStore]);
+
+        $this->scopeConfig
+            ->method('getValue')
+            ->willReturnMap([
+                ['general/locale/code', 'website', 2, 'en_US'],
+            ]);
+
+        $result = $this->detector->getOverrides('general/locale/code');
+
+        self::assertCount(1, $result->getOverrides());
+        self::assertSame('us_en', $result->getOverrides()[0]->getScopeCode());
+        self::assertSame('main_website', $result->getOverrides()[0]->getWebsiteCode());
+    }
+
     public function testFiltersOutCurrentStore(): void
     {
         $this->stubRequestParams(null, 'us_en');
