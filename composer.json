@@ -29,7 +29,7 @@
         }
     },
     "repositories": {
-        "mage-os": {
+        "mage-os-mirror": {
             "type": "composer",
             "url": "https://mirror.mage-os.org/"
         }
