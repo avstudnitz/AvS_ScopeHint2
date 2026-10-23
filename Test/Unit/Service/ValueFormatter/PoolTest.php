@@ -9,6 +9,8 @@ use AvS\ScopeHint\Service\ValueFormatter\MaskedFormatter;
 use AvS\ScopeHint\Service\ValueFormatter\Pool;
 use AvS\ScopeHint\Service\ValueFormatter\ValueFormatterInterface;
 use Magento\Config\Model\Config\Structure\Element\Field;
+use Magento\Config\Model\Config\TypePool;
+use Magento\Framework\ObjectManager\ConfigInterface as DiConfig;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -23,7 +25,10 @@ class PoolTest extends TestCase
         $rejectingFormatter = $this->createMock(ValueFormatterInterface::class);
         $rejectingFormatter->method('supports')->willReturn(false);
 
-        $maskedFormatter = new MaskedFormatter();
+        $maskedFormatter = new MaskedFormatter(
+            $this->createMock(TypePool::class),
+            $this->createMock(DiConfig::class)
+        );
 
         $pool = new Pool([$rejectingFormatter, $maskedFormatter]);
 
@@ -41,7 +46,10 @@ class PoolTest extends TestCase
         $notMatching = $this->createMock(ValueFormatterInterface::class);
         $notMatching->method('supports')->willReturn(false);
 
-        $maskedFormatter = new MaskedFormatter();
+        $maskedFormatter = new MaskedFormatter(
+            $this->createMock(TypePool::class),
+            $this->createMock(DiConfig::class)
+        );
 
         $pool = new Pool([$notMatching, $maskedFormatter]);
 

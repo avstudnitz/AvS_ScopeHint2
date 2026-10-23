@@ -41,9 +41,9 @@
     <type name="AvS\ScopeHint\Service\ValueFormatter\Pool">
         <arguments>
             <argument name="formatters" xsi:type="array">
+                <item name="masked" xsi:type="object">AvS\ScopeHint\Service\ValueFormatter\MaskedFormatter</item>
                 <item name="serialized_array" xsi:type="object">AvS\ScopeHint\Service\ValueFormatter\SerializedArrayFormatter</item>
                 <item name="datetime" xsi:type="object">AvS\ScopeHint\Service\ValueFormatter\DatetimeFormatter</item>
-                <item name="masked" xsi:type="object">AvS\ScopeHint\Service\ValueFormatter\MaskedFormatter</item>
                 <item name="file" xsi:type="object">AvS\ScopeHint\Service\ValueFormatter\FileFormatter</item>
                 <item name="editor" xsi:type="object">AvS\ScopeHint\Service\ValueFormatter\EditorFormatter</item>
                 <item name="default" xsi:type="object">AvS\ScopeHint\Service\ValueFormatter\DefaultFormatter</item>
